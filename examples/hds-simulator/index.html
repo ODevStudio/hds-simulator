@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="hds-control-api" content="">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>HDS Browser Simulator</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="src/app.mjs"></script>
+</head>
+<body>
+  <header class="app-header chrome">
+    <div class="identity"><span class="brand">HDS<span class="brand-dot"></span></span><div><h1>Browser Simulator</h1><span class="version">V8.1 <span aria-hidden="true">/</span> 3.1.16</span></div></div>
+    <div class="header-state"><span class="connection-dot"></span><span>Local simulation</span></div>
+  </header>
+  <div class="workspace">
+    <aside class="controls chrome" aria-label="Simulation controls">
+      <form id="control-form">
+        <fieldset id="controls-fieldset" disabled>
+          <section class="control-section">
+            <div class="section-heading"><h2>Weight</h2><span class="icon-label" data-icon="Scale" aria-hidden="true"></span></div>
+            <label for="weight">Applied weight <span class="unit">g</span></label>
+            <div class="weight-entry"><div class="number-field"><input id="weight" name="weight" type="number" min="-10000" max="10000" step="0.1" value="0.0" inputmode="decimal"><button id="weight-step-up" type="button" class="number-step step-up" title="Increase applied weight" aria-label="Increase applied weight"><span data-icon="ChevronUp" aria-hidden="true"></span></button><button id="weight-step-down" type="button" class="number-step step-down" title="Decrease applied weight" aria-label="Decrease applied weight"><span data-icon="ChevronDown" aria-hidden="true"></span></button></div><button type="button" id="tare" class="text-button" title="Tare the scale"><span data-icon="Scale" aria-hidden="true"></span>Tare</button></div>
+            <div class="reading"><span>Displayed</span><output id="net-weight">0.0 g</output></div>
+            <div class="pour-row"><label for="pour-rate">Pour rate</label><div class="number-with-unit"><div class="number-field"><input id="pour-rate" type="number" min="0" max="1000" step="1" value="3" inputmode="decimal"><button id="pour-rate-step-up" type="button" class="number-step step-up" title="Increase pour rate" aria-label="Increase pour rate"><span data-icon="ChevronUp" aria-hidden="true"></span></button><button id="pour-rate-step-down" type="button" class="number-step step-down" title="Decrease pour rate" aria-label="Decrease pour rate"><span data-icon="ChevronDown" aria-hidden="true"></span></button></div><span>g/s</span></div></div>
+            <button type="button" id="pour" class="wide-button"><span data-icon="Droplets" aria-hidden="true"></span><span id="pour-label">Start pouring</span></button>
+            <div class="surface-actions" role="group" aria-label="Surface taps"><button id="double-tap" type="button" class="text-button" title="Double surface tap" disabled>2x tap</button><button id="triple-tap" type="button" class="text-button" title="Triple surface tap" disabled>3x tap</button></div>
+          </section>
+          <section class="control-section">
+            <div class="section-heading"><h2>Connections</h2><span data-icon="Radio" class="icon-label" aria-hidden="true"></span></div>
+            <label class="toggle-row" for="ble-enabled"><span><span data-icon="Bluetooth" aria-hidden="true"></span>Bluetooth enabled</span><input id="ble-enabled" type="checkbox" role="switch" checked></label>
+            <label class="toggle-row" for="ble-connected"><span>App connected</span><input id="ble-connected" type="checkbox" role="switch"></label>
+            <label class="toggle-row" for="wifi-enabled"><span><span data-icon="Wifi" aria-hidden="true"></span>WiFi enabled</span><input id="wifi-enabled" type="checkbox" role="switch"></label>
+            <label class="toggle-row" for="wifi-connected"><span>WiFi connected</span><input id="wifi-connected" type="checkbox" role="switch"></label>
+          </section>
+          <section class="control-section">
+            <div class="section-heading"><h2>Power</h2><span data-icon="Battery" class="icon-label" aria-hidden="true"></span></div>
+            <div class="range-label"><label for="battery">Battery</label><output id="battery-value">75%</output></div>
+            <input id="battery" type="range" min="0" max="100" step="1" value="75">
+            <label class="toggle-row" for="usb-present"><span>USB connected</span><input id="usb-present" type="checkbox" role="switch" checked></label>
+            <label class="toggle-row" for="charging"><span>Charging</span><input id="charging" type="checkbox" role="switch" checked></label>
+          </section>
+          <section class="control-section prompt-section">
+            <div class="section-heading"><h2>App Text</h2><span id="app-text-state" class="state-label">Off</span></div>
+            <label for="prompt">Prompt</label>
+            <textarea id="prompt" rows="3" maxlength="128" spellcheck="false">Carpano Antica Sweet Vermouth: 31g</textarea>
+            <div class="prompt-actions"><span id="prompt-length">34 / 128</span><div><button id="clear-prompt" type="button" class="icon-button" title="Clear App Text" aria-label="Clear App Text"><span data-icon="Eraser" aria-hidden="true"></span></button><button id="show-prompt" type="button" class="text-button primary" title="Show App Text"><span data-icon="Send" aria-hidden="true"></span>Show</button></div></div>
+          </section>
+          <section class="control-section session-section">
+            <div class="section-heading"><h2>Session</h2></div>
+            <button id="setup-boot" type="button" class="wide-button"><span data-icon="List" aria-hidden="true"></span>Setup boot</button>
+            <button id="reset-defaults" type="button" class="wide-button quiet"><span data-icon="Settings2" aria-hidden="true"></span>Reset defaults</button>
+          </section>
+        </fieldset>
+      </form>
+    </aside>
+    <main class="simulator">
+      <nav class="simulation-bar chrome" aria-label="Clock and screen controls">
+        <div class="clock-tools"><button id="play-pause" type="button" class="icon-button primary" title="Pause simulation" aria-label="Pause simulation" disabled><span data-icon="Pause" aria-hidden="true"></span></button><button id="step" type="button" class="icon-button" title="Advance 100 milliseconds" aria-label="Advance 100 milliseconds" disabled><span data-icon="StepForward" aria-hidden="true"></span></button><button id="restart" type="button" class="icon-button" title="Restart HDS" aria-label="Restart HDS" disabled><span data-icon="RotateCcw" aria-hidden="true"></span></button><output id="sim-time" class="timecode" aria-label="Simulation time">00:00:00.0</output></div>
+        <div class="scene-tools"><label class="sr-only" for="scene">HDS screen</label><select id="scene" disabled><option value="boot">Boot</option><option value="weighing">Weighing</option><optgroup label="Menus"><option value="main">Main menu</option><option value="scale">Scale</option><option value="connections">Connections</option><option value="display">Display</option><option value="power">Power</option><option value="info">Info</option></optgroup></select><button id="clean-view" class="icon-button" type="button" title="Clean recording view" aria-label="Clean recording view"><span data-icon="Maximize2" aria-hidden="true"></span></button></div>
+      </nav>
+      <div class="viewport-heading chrome"><div class="screen-indicator"><span class="live-dot"></span><span id="screen-label">BOOT</span></div><div class="view-modes" role="group" aria-label="View"><button id="view-detail" type="button" class="mode-button selected" aria-pressed="true"><span data-icon="Monitor" aria-hidden="true"></span>Display</button><button id="view-full" type="button" class="mode-button" aria-pressed="false"><span data-icon="Scale" aria-hidden="true"></span>Scale</button></div></div>
+      <section class="stage-floor" aria-label="HDS scale">
+        <div class="scale-window detail" id="scale-window">
+          <div class="scale-layer">
+            <img class="scale-photo" src="assets/hds-scale.png" width="2362" height="1249" alt="Half Decent Scale" draggable="false">
+            <div class="oled-cover" aria-hidden="true"></div>
+            <canvas id="oled" width="128" height="64" role="img" aria-label="HDS OLED display"></canvas>
+            <button id="circle" type="button" class="physical-button circle-button" aria-label="HDS Circle button" title="Circle" disabled></button>
+            <button id="square" type="button" class="physical-button square-button" aria-label="HDS Square button" title="Square" disabled></button>
+          </div>
+        </div>
+      </section>
+      <div class="notice-row chrome"><output id="notice" role="status" aria-live="polite">Loading renderer</output><span id="timer-reading" class="timer-reading"></span></div>
+      <footer class="viewport-footer chrome"><span>128 &times; 64 <span class="footer-separator">/</span> Standard HDS</span><span id="renderer-version">U8g2</span></footer>
+    </main>
+  </div>
+  <button id="exit-clean" class="icon-button capture-exit" type="button" title="Exit clean view" aria-label="Exit clean view"><span data-icon="Minimize2" aria-hidden="true"></span></button>
+</body>
+</html>

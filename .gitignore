@@ -1,0 +1,13 @@
+**/node_modules/
+**/.pio*/
+.codegraph/
+**/__pycache__/
+*.py[cod]
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+connection.json
+*.pem
+*.key
+examples/hds-simulator/renderer/build/

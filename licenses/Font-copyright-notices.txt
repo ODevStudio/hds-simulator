@@ -1,0 +1,87 @@
+u8g2_font_logisoso22_tf
+/*
+  Fontname: -FreeType-Logisoso-Medium-R-Normal--32-320-72-72-P-40-ISO10646-1
+  Copyright: Created by Mathieu Gabiot with FontForge 2.0 (http://fontforge.sf.net) - Brussels - 2009
+  Glyphs: 224/527
+  BBX Build Mode: 0
+*/
+
+u8g2_font_logisoso24_tf
+/*
+  Fontname: -FreeType-Logisoso-Medium-R-Normal--34-340-72-72-P-42-ISO10646-1
+  Copyright: Created by Mathieu Gabiot with FontForge 2.0 (http://fontforge.sf.net) - Brussels - 2009
+  Glyphs: 224/527
+  BBX Build Mode: 0
+*/
+
+u8g2_font_logisoso32_tf
+/*
+  Fontname: -FreeType-Logisoso-Medium-R-Normal--45-450-72-72-P-55-ISO10646-1
+  Copyright: Created by Mathieu Gabiot with FontForge 2.0 (http://fontforge.sf.net) - Brussels - 2009
+  Glyphs: 224/527
+  BBX Build Mode: 0
+*/
+
+u8g2_font_luBS18_tr
+/*
+  Fontname: -B&H-Lucida-Bold-R-Normal-Sans-25-180-100-100-P-158-ISO10646-1
+  Copyright: Copyright Bigelow & Holmes 1986, 1985.
+  Glyphs: 95/756
+  BBX Build Mode: 0
+*/
+
+u8g2_font_helvR10_tr
+/*
+  Fontname: -Adobe-Helvetica-Medium-R-Normal--14-100-100-100-P-76-ISO10646-1
+  Copyright: Copyright (c) 1984, 1987 Adobe Systems Incorporated. All Rights Reserved. Copyright (c) 1988, 1991 Digital Equipment Corporation. All Rights Reserved.
+  Glyphs: 95/756
+  BBX Build Mode: 0
+*/
+
+u8g2_font_fub14_tr
+/*
+  Fontname: -FreeType-FreeUniversal-Bold-R-Normal--20-200-72-72-P-102-ISO10646-1
+  Copyright: FreeUniveral (c) Stephen Wilson 2009    Original Font Sil-Sophia  Copyright (c) SIL International, 1994-2008.
+  Glyphs: 95/243
+  BBX Build Mode: 0
+*/
+
+u8g2_font_5x7_tr
+/*
+  Fontname: -Misc-Fixed-Medium-R-Normal--7-70-75-75-C-50-ISO10646-1
+  Copyright: Public domain font.  Share and enjoy.
+  Glyphs: 95/1848
+  BBX Build Mode: 0
+*/
+
+u8g2_font_5x8_tr
+/*
+  Fontname: -Misc-Fixed-Medium-R-Normal--8-80-75-75-C-50-ISO10646-1
+  Copyright: Public domain font.  Share and enjoy.
+  Glyphs: 95/1426
+  BBX Build Mode: 0
+*/
+
+u8g2_font_6x10_tr
+/*
+  Fontname: -Misc-Fixed-Medium-R-Normal--10-100-75-75-C-60-ISO10646-1
+  Copyright: Public domain terminal emulator font.  Share and enjoy.
+  Glyphs: 95/1597
+  BBX Build Mode: 0
+*/
+
+u8g2_font_6x12_tr
+/*
+  Fontname: -Misc-Fixed-Medium-R-SemiCondensed--12-110-75-75-C-60-ISO10646-1
+  Copyright: Public domain terminal emulator font.  Share and enjoy.
+  Glyphs: 95/4531
+  BBX Build Mode: 0
+*/
+
+u8g2_font_6x13_tr
+/*
+  Fontname: -Misc-Fixed-Medium-R-SemiCondensed--13-120-75-75-C-60-ISO10646-1
+  Copyright: Public domain font.  Share and enjoy.
+  Glyphs: 95/4121
+  BBX Build Mode: 0
+*/

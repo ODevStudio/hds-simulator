@@ -1,0 +1,3 @@
+ded7247070bf97d957d8f6c03c8004e54a94aa5c90347c2031eccc65b5b96b88  HDS-Simulator-Windows-x64.zip
+9e3f60a5eae2544b0e5388d54ffd9fc2490b0a071e53430873fd4039aa77540e  HDS-Simulator-macOS-Apple-Silicon.tar.gz
+0c6c5273739f266c075a05067f65dcd166cf77ed35f3d472e558b663af08f0ed  HDS-Simulator-macOS-Intel.tar.gz

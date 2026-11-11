@@ -1,0 +1,13 @@
+{
+  "name": "hds-browser-simulator",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "test:server": "node --test tests/server*.mjs"
+  },
+  "dependencies": {
+    "ws": "8.22.2"
+  }
+}

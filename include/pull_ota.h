@@ -1,0 +1,1779 @@
+#ifndef PULL_OTA_H
+#define PULL_OTA_H
+
+#include "config.h"
+#if HDS_FEATURE_PULL_OTA
+
+#include "display.h"
+#include "parameter.h"
+#include "filesystem_recovery.h"
+#include "pull_ota_catalog.h"
+#include "pull_ota_version.h"
+#if HDS_FEATURE_WEBSERVER
+#include "webserver.h"
+#endif
+#include "wifi_setup.h"
+#include "wifi_settings.h"
+#if __has_include("ota_public_key.h")
+#include "ota_public_key.h"
+#endif
+#if __has_include("custom_ota_public_key.h")
+#include "custom_ota_public_key.h"
+#endif
+#include <Arduino.h>
+#include <ArduinoJson.h>
+#include <HTTPClient.h>
+#include <LittleFS.h>
+#include <Preferences.h>
+#include <Update.h>
+#include <WiFi.h>
+#include <WiFiClientSecure.h>
+#include <esp_partition.h>
+#include <esp_ota_ops.h>
+#include <mbedtls/md.h>
+#include <mbedtls/pk.h>
+#include <string.h>
+#include <time.h>
+#include <utility>
+
+void wifi_init();
+void hdsOtaRollbackMarkValid();
+bool hdsOtaAcceptFilesystemRecovery();
+
+#ifndef HDS_OTA_MANIFEST_URL
+#define HDS_OTA_MANIFEST_URL "https://github.com/decentespresso/openscale/releases/latest/download/manifest.json"
+#endif
+
+#ifndef HDS_OTA_ASSET_URL_PREFIX
+#define HDS_OTA_ASSET_URL_PREFIX "https://github.com/decentespresso/openscale/releases/download/"
+#endif
+
+#ifndef HDS_CUSTOM_BUILD_SERVICE_URL
+#define HDS_CUSTOM_BUILD_SERVICE_URL "https://openscale-custom-builds.odevstudio.workers.dev"
+#endif
+
+#ifndef HDS_CUSTOM_BUILD_COMBINATION_HASH
+#define HDS_CUSTOM_BUILD_COMBINATION_HASH ""
+#endif
+
+#ifndef HDS_OTA_MANIFEST_PUBLIC_KEY_1_PEM
+#define HDS_OTA_MANIFEST_PUBLIC_KEY_1_PEM ""
+#endif
+
+#ifndef HDS_OTA_MANIFEST_PUBLIC_KEY_2_PEM
+#define HDS_OTA_MANIFEST_PUBLIC_KEY_2_PEM ""
+#endif
+
+#ifndef HDS_OTA_MANIFEST_PUBLIC_KEY_3_PEM
+#define HDS_OTA_MANIFEST_PUBLIC_KEY_3_PEM ""
+#endif
+
+static const char HDS_OTA_CA_CERTS[] PROGMEM = R"PEM(
+-----BEGIN CERTIFICATE-----
+MIICOjCCAcGgAwIBAgIQQvLM2htpN0RfFf51KBC49DAKBggqhkjOPQQDAzBfMQswCQYDVQQGEwJH
+QjEYMBYGA1UEChMPU2VjdGlnbyBMaW1pdGVkMTYwNAYDVQQDEy1TZWN0aWdvIFB1YmxpYyBTZXJ2
+ZXIgQXV0aGVudGljYXRpb24gUm9vdCBFNDYwHhcNMjEwMzIyMDAwMDAwWhcNNDYwMzIxMjM1OTU5
+WjBfMQswCQYDVQQGEwJHQjEYMBYGA1UEChMPU2VjdGlnbyBMaW1pdGVkMTYwNAYDVQQDEy1TZWN0
+aWdvIFB1YmxpYyBTZXJ2ZXIgQXV0aGVudGljYXRpb24gUm9vdCBFNDYwdjAQBgcqhkjOPQIBBgUr
+gQQAIgNiAAR2+pmpbiDt+dd34wc7qNs9Xzjoq1WmVk/WSOrsfy2qw7LFeeyZYX8QeccCWvkEN/U0
+NSt3zn8gj1KjAIns1aeibVvjS5KToID1AZTc8GgHHs3u/iVStSBDHBv+6xnOQ6OjQjBAMB0GA1Ud
+DgQWBBTRItpMWfFLXyY4qp3W7usNw/upYTAOBgNVHQ8BAf8EBAMCAYYwDwYDVR0TAQH/BAUwAwEB
+/zAKBggqhkjOPQQDAwNnADBkAjAn7qRaqCG76UeXlImldCBteU/IvZNeWBj7LRoAasm4PdCkT0RH
+lAFWovgzJQxC36oCMB3q4S6ILuH5px0CMk7yn2xVdOOurvulGu7t0vzCAxHrRVxgED1cf5kDW21U
+SAGKcw==
+-----END CERTIFICATE-----
+-----BEGIN CERTIFICATE-----
+MIIFazCCA1OgAwIBAgIRAIIQz7DSQONZRGPgu2OCiwAwDQYJKoZIhvcNAQELBQAwTzELMAkGA1UE
+BhMCVVMxKTAnBgNVBAoTIEludGVybmV0IFNlY3VyaXR5IFJlc2VhcmNoIEdyb3VwMRUwEwYDVQQD
+EwxJU1JHIFJvb3QgWDEwHhcNMTUwNjA0MTEwNDM4WhcNMzUwNjA0MTEwNDM4WjBPMQswCQYDVQQG
+EwJVUzEpMCcGA1UEChMgSW50ZXJuZXQgU2VjdXJpdHkgUmVzZWFyY2ggR3JvdXAxFTATBgNVBAMT
+DElTUkcgUm9vdCBYMTCCAiIwDQYJKoZIhvcNAQEBBQADggIPADCCAgoCggIBAK3oJHP0FDfzm54r
+Vygch77ct984kIxuPOZXoHj3dcKi/vVqbvYATyjb3miGbESTtrFj/RQSa78f0uoxmyF+0TM8ukj1
+3Xnfs7j/EvEhmkvBioZxaUpmZmyPfjxwv60pIgbz5MDmgK7iS4+3mX6UA5/TR5d8mUgjU+g4rk8K
+b4Mu0UlXjIB0ttov0DiNewNwIRt18jA8+o+u3dpjq+sWT8KOEUt+zwvo/7V3LvSye0rgTBIlDHCN
+Aymg4VMk7BPZ7hm/ELNKjD+Jo2FR3qyHB5T0Y3HsLuJvW5iB4YlcNHlsdu87kGJ55tukmi8mxdAQ
+4Q7e2RCOFvu396j3x+UCB5iPNgiV5+I3lg02dZ77DnKxHZu8A/lJBdiB3QW0KtZB6awBdpUKD9jf
+1b0SHzUvKBds0pjBqAlkd25HN7rOrFleaJ1/ctaJxQZBKT5ZPt0m9STJEadao0xAH0ahmbWnOlFu
+hjuefXKnEgV4We0+UXgVCwOPjdAvBbI+e0ocS3MFEvzG6uBQE3xDk3SzynTnjh8BCNAw1FtxNrQH
+usEwMFxIt4I7mKZ9YIqioymCzLq9gwQbooMDQaHWBfEbwrbwqHyGO0aoSCqI3Haadr8faqU9GY/r
+OPNk3sgrDQoo//fb4hVC1CLQJ13hef4Y53CIrU7m2Ys6xt0nUW7/vGT1M0NPAgMBAAGjQjBAMA4G
+A1UdDwEB/wQEAwIBBjAPBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBR5tFnme7bl5AFzgAiIyBpY
+9umbbjANBgkqhkiG9w0BAQsFAAOCAgEAVR9YqbyyqFDQDLHYGmkgJykIrGF1XIpu+ILlaS/V9lZL
+ubhzEFnTIZd+50xx+7LSYK05qAvqFyFWhfFQDlnrzuBZ6brJFe+GnY+EgPbk6ZGQ3BebYhtF8GaV
+0nxvwuo77x/Py9auJ/GpsMiu/X1+mvoiBOv/2X/qkSsisRcOj/KKNFtY2PwByVS5uCbMiogziUwt
+hDyC3+6WVwW6LLv3xLfHTjuCvjHIInNzktHCgKQ5ORAzI4JMPJ+GslWYHb4phowim57iaztXOoJw
+TdwJx4nLCgdNbOhdjsnvzqvHu7UrTkXWStAmzOVyyghqpZXjFaH3pO3JLF+l+/+sKAIuvtd7u+Nx
+e5AW0wdeRlN8NwdCjNPElpzVmbUq4JUagEiuTDkHzsxHpFKVK7q4+63SM1N95R1NbdWhscdCb+ZA
+JzVcoyi3B43njTOQ5yOf+1CceWxG1bQVs5ZufpsMljq4Ui0/1lvh+wjChP4kqKOJ2qxq4RgqsahD
+YVvTH9w7jXbyLeiNdd8XM2w9U/t7y0Ff/9yi0GE44Za4rF2LN9d11TPAmRGunUHBcnWEvgJBQl9n
+JEiU0Zsnvgc/ubhPgXRR4Xq37Z0j4r7g1SgEEzwxA57demyPxgcYxn/eR44/KJ4EBs+lVDR3veyJ
+m+kXQ99b21/+jh5Xos1AnX5iItreGCc=
+-----END CERTIFICATE-----
+-----BEGIN CERTIFICATE-----
+MIICCTCCAY6gAwIBAgINAgPlwGjvYxqccpBQUjAKBggqhkjOPQQDAzBHMQswCQYD
+VQQGEwJVUzEiMCAGA1UEChMZR29vZ2xlIFRydXN0IFNlcnZpY2VzIExMQzEUMBIG
+A1UEAxMLR1RTIFJvb3QgUjQwHhcNMTYwNjIyMDAwMDAwWhcNMzYwNjIyMDAwMDAw
+WjBHMQswCQYDVQQGEwJVUzEiMCAGA1UEChMZR29vZ2xlIFRydXN0IFNlcnZpY2Vz
+IExMQzEUMBIGA1UEAxMLR1RTIFJvb3QgUjQwdjAQBgcqhkjOPQIBBgUrgQQAIgNi
+AATzdHOnaItgrkO4NcWBMHtLSZ37wWHO5t5GvWvVYRg1rkDdc/eJkTBa6zzuhXyi
+QHY7qca4R9gq55KRanPpsXI5nymfopjTX15YhmUPoYRlBtHci8nHc8iMai/lxKvR
+HYqjQjBAMA4GA1UdDwEB/wQEAwIBhjAPBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQW
+BBSATNbrdP9JNqPV2Py1PsVq8JQdjDAKBggqhkjOPQQDAwNpADBmAjEA6ED/g94D
+9J+uHXqnLrmvT/aDHQ4thQEd0dlq7A/Cr8deVl5c1RxYIigL9zC2L7F8AjEA8GE8
+p/SgguMh1YQdc4acLa/KNJvxn7kjNuK8YAOdgLOaVsjh4rsUecrNIdSUtUlD
+-----END CERTIFICATE-----
+)PEM";
+
+static const size_t HDS_OTA_MANIFEST_MAX_BYTES = 16384;
+static const size_t HDS_OTA_MANIFEST_SIGNATURE_MAX_BYTES = 1024;
+static const size_t HDS_OTA_BUFFER_BYTES = 1024;
+static const unsigned long HDS_OTA_WIFI_TIMEOUT_MS = 45000;
+static const unsigned long HDS_OTA_PENDING_WIFI_TIMEOUT_MS = HDS_OTA_WIFI_TIMEOUT_MS;
+static const unsigned long HDS_OTA_HTTP_TIMEOUT_MS = 20000;
+static const unsigned long HDS_OTA_CLOCK_TIMEOUT_MS = 8000;
+static const unsigned long HDS_OTA_CONFIRM_TIMEOUT_MS = 15000;
+static const unsigned long HDS_OTA_CONFIRM_HOLD_MS = 1200;
+static const unsigned long HDS_OTA_PICK_TIMEOUT_MS = 30000;
+static const uint32_t HDS_OTA_TASK_STACK_BYTES = 24576;
+static const uint8_t HDS_OTA_MAX_RELEASE_CHOICES = 10;
+static const char *HDS_OTA_CHIP = "esp32s3";
+static const char *HDS_OTA_ENVIRONMENT = "esp32s3";
+static const char *HDS_OTA_PARTITION_SCHEMA = "esp32s3-default-8mb-ota-spiffs-1536k";
+static const char *HDS_OTA_FS_PARTITION_LABEL = "spiffs";
+static const uint32_t HDS_OTA_FLASH_SIZE = 8388608;
+static const uint32_t HDS_OTA_APP_PARTITION_MIN_SIZE = 3342336;
+static const uint32_t HDS_OTA_FS_PARTITION_SIZE = 1572864;
+static const uint32_t HDS_OTA_FS_SCHEMA = 1;
+static const char *HDS_OTA_MIN_INSTALL_VERSION = "3.1.13";
+
+struct PullOtaAsset {
+  bool present = false;
+  bool required = false;
+  String url = "";
+  size_t size = 0;
+  String sha256 = "";
+};
+
+struct PullOtaManifest {
+  String model = "";
+  String version = "";
+  String minFrom = "";
+  String releaseNotesUrl = "";
+  String pcb = "";
+  String chip = "";
+  String environment = "";
+  String partitionSchema = "";
+  String fsPartitionLabel = "";
+  uint32_t flashSize = 0;
+  uint32_t appPartitionMinSize = 0;
+  uint32_t fsPartitionSize = 0;
+  uint32_t fsSchema = 0;
+  uint8_t forwardRecoveryVersion = 0;
+  PullOtaAsset firmware;
+  PullOtaAsset littlefs;
+};
+
+bool customBuildFetchManifest(const String &combinationHash, PullOtaManifest &manifest);
+void customBuildReportInstalled(const String &failedCombinationHash = "");
+void customBuildReportInstallState(const String &combinationHash, const char *state);
+
+struct PullOtaReleaseList {
+  PullOtaManifest releases[HDS_OTA_MAX_RELEASE_CHOICES];
+  uint8_t count = 0;
+};
+
+struct PullOtaReleaseSelection {
+  uint8_t indices[HDS_OTA_MAX_RELEASE_CHOICES];
+  uint8_t count = 0;
+};
+
+struct PullOtaPendingLittleFs {
+  bool present = false;
+  bool restore = false;
+  bool restoreAttempted = false;
+  bool filesystemDirty = false;
+  bool forwardRecovery = false;
+  uint8_t targetAttempts = 0;
+  String version = "";
+  String rollbackVersion = "";
+  String combinationHash = "";
+  String rollbackCombinationHash = "";
+  String installCombinationHash = "";
+  String fsPartitionLabel = "";
+  uint32_t fsPartitionSize = 0;
+  uint32_t fsSchema = 0;
+  PullOtaAsset asset;
+  PullOtaAsset rollbackAsset;
+};
+
+struct PullOtaHash {
+  mbedtls_md_context_t context;
+  const mbedtls_md_info_t *info = nullptr;
+  bool active = false;
+};
+
+void pullOtaDraw(const char *line1, const char *line2 = "", const char *line3 = "") {
+  if (b_screenFlipped)
+    u8g2.setDisplayRotation(U8G2_R0);
+  else
+    u8g2.setDisplayRotation(U8G2_R2);
+  u8g2.setFont(FONT_S);
+#if HDS_ENABLE_ENERGY_MENU
+  invalidateEnergyOledFrame();
+#endif
+  u8g2.firstPage();
+  do {
+    if (line1 && line1[0] != '\0') u8g2.drawUTF8(AC(line1), 14, line1);
+    if (line2 && line2[0] != '\0') u8g2.drawUTF8(AC(line2), 36, line2);
+    if (line3 && line3[0] != '\0') u8g2.drawUTF8(AC(line3), 58, line3);
+  } while (u8g2.nextPage());
+}
+
+void pullOtaDrawProgress(const char *label, uint8_t percent) {
+  char percentLine[24];
+  snprintf(percentLine, sizeof(percentLine), "%u%%", percent);
+  pullOtaDraw(label, percentLine);
+}
+
+bool pullOtaFail(const char *line1, const char *line2 = "") {
+  Serial.printf("[pull-ota] error %s %s\n", line1, line2);
+  pullOtaDraw(line1, line2);
+  delay(2000);
+  return false;
+}
+
+String pullOtaCurrentVersion() {
+  String version = FIRMWARE_VER;
+  int colon = version.indexOf(':');
+  if (colon >= 0) {
+    version = version.substring(colon + 1);
+  }
+  version.trim();
+  return version;
+}
+
+bool pullOtaCurrentReleaseVersion(String &version) {
+  version = pullOtaCurrentVersion();
+  version.trim();
+  if (version.startsWith("v") || version.startsWith("V")) version.remove(0, 1);
+  return pullOtaVersionIsRelease(version.c_str());
+}
+
+bool pullOtaParseVersionTriplet(String version, uint16_t parts[3]) {
+  version.trim();
+  PullOtaVersionTriplet parsed;
+  if (!pullOtaParseVersionPrefix(version.c_str(), parsed) || *parsed.suffix != '\0') {
+    return false;
+  }
+  for (uint8_t part = 0; part < 3; part++) parts[part] = parsed.parts[part];
+  return true;
+}
+
+bool pullOtaVersionLooksStable(const String &version) {
+  String trimmed = version;
+  trimmed.trim();
+  return pullOtaVersionIsStable(trimmed.c_str());
+}
+
+int pullOtaCompareVersions(const String &left, const String &right) {
+  String leftTrimmed = left;
+  String rightTrimmed = right;
+  leftTrimmed.trim();
+  rightTrimmed.trim();
+  return pullOtaCompareVersionPrefixes(leftTrimmed.c_str(), rightTrimmed.c_str());
+}
+
+bool pullOtaUrlAllowed(const String &url) {
+  return url.startsWith(HDS_OTA_ASSET_URL_PREFIX);
+}
+
+bool pullOtaManifestUrlAllowed(const String &url) {
+  return url == HDS_OTA_MANIFEST_URL ||
+         (pullOtaUrlAllowed(url) && url.endsWith("/manifest.json"));
+}
+
+bool pullOtaShaLooksValid(String value) {
+  value.trim();
+  if (value.length() != 64) {
+    return false;
+  }
+  for (int i = 0; i < value.length(); i++) {
+    char c = value.charAt(i);
+    bool digit = c >= '0' && c <= '9';
+    bool lower = c >= 'a' && c <= 'f';
+    bool upper = c >= 'A' && c <= 'F';
+    if (!digit && !lower && !upper) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool pullOtaCustomLittleFsUrlAllowed(
+    const String &url,
+    const String &combinationHash) {
+  return pullOtaShaLooksValid(combinationHash) &&
+         url == String(HDS_CUSTOM_BUILD_SERVICE_URL) + "/v1/" +
+                    combinationHash + "/littlefs.bin";
+}
+
+String pullOtaCurrentCombinationHash() {
+  String combinationHash = HDS_CUSTOM_BUILD_COMBINATION_HASH;
+  combinationHash.trim();
+  combinationHash.toLowerCase();
+  return pullOtaShaLooksValid(combinationHash) ? combinationHash : "";
+}
+
+bool pullOtaIdentityMatches(
+    const String &version,
+    const String &combinationHash) {
+  const String currentCombinationHash = pullOtaCurrentCombinationHash();
+  if (combinationHash.length() > 0 || currentCombinationHash.length() > 0) {
+    return pullOtaShaLooksValid(combinationHash) &&
+           combinationHash == currentCombinationHash;
+  }
+  return version == pullOtaCurrentVersion();
+}
+
+bool pullOtaParseAsset(
+    JsonVariant variant,
+    PullOtaAsset &asset,
+    bool requiredDefault,
+    const char *assetUrlPrefix = HDS_OTA_ASSET_URL_PREFIX) {
+  JsonObject object = variant.as<JsonObject>();
+  if (object.isNull()) {
+    return false;
+  }
+  const char *url = object["url"] | "";
+  const char *sha = object["sha256"] | "";
+  unsigned long size = object["size"] | 0UL;
+  String shaValue = sha;
+  shaValue.trim();
+  shaValue.toLowerCase();
+  if (url[0] == '\0' || size == 0 || !pullOtaShaLooksValid(shaValue)) {
+    return false;
+  }
+  asset.present = true;
+  asset.required = object["required"] | requiredDefault;
+  asset.url = url;
+  asset.size = (size_t)size;
+  asset.sha256 = shaValue;
+  return assetUrlPrefix != nullptr && asset.url.startsWith(assetUrlPrefix);
+}
+
+bool pullOtaManifestCompatible(const PullOtaManifest &manifest) {
+  if (manifest.chip != HDS_OTA_CHIP) {
+    return false;
+  }
+  if (manifest.environment != HDS_OTA_ENVIRONMENT) {
+    return false;
+  }
+  if (manifest.partitionSchema != HDS_OTA_PARTITION_SCHEMA) {
+    return false;
+  }
+  if (ESP.getFlashChipSize() < manifest.flashSize) {
+    return false;
+  }
+  if (ESP.getFreeSketchSpace() < manifest.appPartitionMinSize) {
+    return false;
+  }
+  if (manifest.firmware.size > ESP.getFreeSketchSpace()) {
+    return false;
+  }
+  if (manifest.fsPartitionLabel != HDS_OTA_FS_PARTITION_LABEL) {
+    return false;
+  }
+  const esp_partition_t *fsPartition = esp_partition_find_first(
+      ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_SPIFFS,
+      HDS_OTA_FS_PARTITION_LABEL);
+  if (fsPartition == nullptr || fsPartition->size != manifest.fsPartitionSize) {
+    return false;
+  }
+  if (manifest.littlefs.present && manifest.littlefs.size != manifest.fsPartitionSize) {
+    return false;
+  }
+  return manifest.fsSchema == HDS_OTA_FS_SCHEMA;
+}
+
+bool pullOtaReleaseCanRunFromCurrent(const PullOtaManifest &manifest) {
+  if (pullOtaCompareVersions(manifest.version, HDS_OTA_MIN_INSTALL_VERSION) < 0) {
+    return false;
+  }
+  String currentVersion = pullOtaCurrentVersion();
+  if (manifest.minFrom.length() > 0 &&
+      pullOtaCompareVersions(currentVersion, manifest.minFrom) < 0) {
+    return false;
+  }
+  return true;
+}
+
+bool pullOtaParseManifestObject(
+    JsonObject root,
+    PullOtaManifest &manifest,
+    const char *assetUrlPrefix = HDS_OTA_ASSET_URL_PREFIX,
+    bool requireStableVersion = true) {
+  const char *model = root["model"] | "";
+  const char *version = root["version"] | "";
+  const char *minFrom = root["min_from"] | "";
+  const char *releaseNotesUrl = root["release_notes_url"] | "";
+  const char *pcb = root["pcb"] | "";
+  const char *chip = root["chip"] | "";
+  const char *environment = root["environment"] | "";
+  const char *partitionSchema = root["partition_schema"] | "";
+  const char *fsPartitionLabel = root["fs_partition_label"] | "";
+  unsigned long flashSize = root["flash_size"] | 0UL;
+  unsigned long appPartitionMinSize = root["app_partition_min_size"] | 0UL;
+  unsigned long fsPartitionSize = root["fs_partition_size"] | 0UL;
+  unsigned long fsSchema = root["fs_schema"] | 0UL;
+  PullOtaVersionTriplet parsedVersion;
+  if (String(model) != "hds" ||
+      (requireStableVersion ? !pullOtaVersionLooksStable(version)
+                            : !pullOtaVersionHasComparablePrefix(version, parsedVersion))) {
+    return false;
+  }
+  if (minFrom[0] != '\0' && !pullOtaVersionLooksStable(minFrom)) {
+    return false;
+  }
+  if (pcb[0] != '\0' && String(pcb) != String(PCB_VER)) {
+    return false;
+  }
+  if (chip[0] == '\0' || environment[0] == '\0' || partitionSchema[0] == '\0' ||
+      fsPartitionLabel[0] == '\0' || flashSize == 0 ||
+      appPartitionMinSize == 0 || fsPartitionSize == 0 || fsSchema == 0) {
+    return false;
+  }
+  manifest.model = model;
+  manifest.version = version;
+  manifest.minFrom = minFrom;
+  manifest.releaseNotesUrl = releaseNotesUrl;
+  manifest.pcb = pcb;
+  manifest.chip = chip;
+  manifest.environment = environment;
+  manifest.partitionSchema = partitionSchema;
+  manifest.fsPartitionLabel = fsPartitionLabel;
+  manifest.flashSize = (uint32_t)flashSize;
+  manifest.appPartitionMinSize = (uint32_t)appPartitionMinSize;
+  manifest.fsPartitionSize = (uint32_t)fsPartitionSize;
+  manifest.fsSchema = (uint32_t)fsSchema;
+  manifest.forwardRecoveryVersion = root["forward_recovery"] == HDS_OTA_FORWARD_RECOVERY_VERSION
+      ? HDS_OTA_FORWARD_RECOVERY_VERSION : 0;
+  if (!pullOtaParseAsset(root["firmware"], manifest.firmware, true, assetUrlPrefix)) {
+    return false;
+  }
+  if (!root["littlefs"].isNull() &&
+      !pullOtaParseAsset(root["littlefs"], manifest.littlefs, false, assetUrlPrefix)) {
+    return false;
+  }
+  return pullOtaManifestCompatible(manifest);
+}
+
+bool pullOtaSameRelease(const PullOtaManifest &left, const PullOtaManifest &right) {
+  return left.model == right.model &&
+         left.pcb == right.pcb &&
+         left.version == right.version &&
+         left.chip == right.chip &&
+         left.environment == right.environment;
+}
+
+void pullOtaAddRelease(PullOtaReleaseList &list, const PullOtaManifest &candidate) {
+  pullOtaCatalogAdd(
+      list.releases,
+      list.count,
+      HDS_OTA_MAX_RELEASE_CHOICES,
+      candidate,
+      pullOtaSameRelease,
+      [](const PullOtaManifest &left, const PullOtaManifest &right) {
+        return pullOtaCompareVersions(left.version, right.version);
+      });
+}
+
+bool pullOtaAddParsedRelease(JsonObject releaseObject, PullOtaReleaseList &list) {
+  PullOtaManifest candidate;
+  if (!pullOtaParseManifestObject(releaseObject, candidate)) {
+    return false;
+  }
+  if (!pullOtaReleaseCanRunFromCurrent(candidate)) {
+    return true;
+  }
+  pullOtaAddRelease(list, candidate);
+  return true;
+}
+
+void pullOtaBuildSelectableReleases(
+    const PullOtaReleaseList &catalog,
+    PullOtaReleaseSelection &selection) {
+  String currentVersion = pullOtaCurrentVersion();
+  const bool currentIsPrerelease = pullOtaVersionIsRelease(currentVersion.c_str()) &&
+                                   !pullOtaVersionIsStable(currentVersion.c_str());
+  const bool currentIsCustom = pullOtaCurrentCombinationHash().length() > 0;
+  for (uint8_t i = 0; i < catalog.count; i++) {
+    if ((currentIsCustom || currentIsPrerelease) &&
+        pullOtaCompareVersions(catalog.releases[i].version, "3.1.13") == 0) {
+      continue;
+    }
+    int currentCompare = pullOtaCompareVersions(catalog.releases[i].version, currentVersion);
+    if ((currentCompare != 0 || currentIsPrerelease || currentIsCustom || filesystemRecoveryActive.load()) &&
+        selection.count < HDS_OTA_MAX_RELEASE_CHOICES) {
+      selection.indices[selection.count++] = i;
+    }
+  }
+}
+
+bool pullOtaHasNewerRelease(
+    const PullOtaReleaseList &catalog,
+    const PullOtaReleaseSelection &selection) {
+  String currentVersion = pullOtaCurrentVersion();
+  for (uint8_t i = 0; i < selection.count; i++) {
+    if (pullOtaCompareVersions(
+            catalog.releases[selection.indices[i]].version,
+            currentVersion) > 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool pullOtaFindCurrentRelease(
+    const PullOtaReleaseList &catalog,
+    PullOtaManifest &current) {
+  String currentVersion;
+  if (!pullOtaCurrentReleaseVersion(currentVersion)) {
+    return false;
+  }
+  for (uint8_t i = 0; i < catalog.count; i++) {
+    if (catalog.releases[i].version == currentVersion &&
+        catalog.releases[i].littlefs.present &&
+        catalog.releases[i].littlefs.required) {
+      current = catalog.releases[i];
+      return true;
+    }
+  }
+  return false;
+}
+
+bool pullOtaSelectReleases(JsonArray releases, PullOtaReleaseList &list) {
+  for (JsonVariant releaseVariant : releases) {
+    JsonObject releaseObject = releaseVariant.as<JsonObject>();
+    if (releaseObject.isNull()) {
+      continue;
+    }
+    pullOtaAddParsedRelease(releaseObject, list);
+  }
+  return true;
+}
+
+bool pullOtaSelectReleases(JsonObject root, PullOtaReleaseList &list) {
+  if (!root["releases"].isNull()) {
+    JsonArray releases = root["releases"].as<JsonArray>();
+    if (releases.isNull()) {
+      return false;
+    }
+    return pullOtaSelectReleases(releases, list);
+  }
+  return pullOtaAddParsedRelease(root, list);
+}
+
+bool pullOtaSelectRelease(JsonArray releases, PullOtaManifest &manifest) {
+  PullOtaReleaseList list;
+  if (!pullOtaSelectReleases(releases, list) || list.count == 0) {
+    return false;
+  }
+  manifest = list.releases[0];
+  return true;
+}
+
+bool pullOtaSelectRelease(JsonObject root, PullOtaManifest &manifest) {
+  PullOtaReleaseList list;
+  if (!pullOtaSelectReleases(root, list) || list.count == 0) {
+    return false;
+  }
+  manifest = list.releases[0];
+  return true;
+}
+
+bool pullOtaParseManifest(const String &body, PullOtaReleaseList &list) {
+  JsonDocument doc;
+  DeserializationError error = deserializeJson(doc, body);
+  if (error) {
+    return false;
+  }
+  JsonObject root = doc.as<JsonObject>();
+  if (root.isNull()) {
+    return false;
+  }
+  return pullOtaSelectReleases(root, list);
+}
+
+bool pullOtaParseManifest(const String &body, PullOtaManifest &manifest) {
+  PullOtaReleaseList list;
+  if (!pullOtaParseManifest(body, list) || list.count == 0) {
+    return false;
+  }
+  manifest = list.releases[0];
+  return true;
+}
+
+bool pullOtaParseRollbackManifest(
+    const String &body,
+    const String &currentVersion,
+    PullOtaManifest &manifest) {
+  JsonDocument doc;
+  if (deserializeJson(doc, body)) {
+    return false;
+  }
+  JsonObject root = doc.as<JsonObject>();
+  PullOtaManifest candidate;
+  if (root.isNull() || !pullOtaParseManifestObject(root, candidate, HDS_OTA_ASSET_URL_PREFIX, false) ||
+      candidate.version != currentVersion ||
+      !candidate.littlefs.present || !candidate.littlefs.required) {
+    return false;
+  }
+  manifest = candidate;
+  return true;
+}
+
+bool pullOtaHashBegin(PullOtaHash &hash) {
+  mbedtls_md_init(&hash.context);
+  hash.info = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
+  if (hash.info == nullptr) {
+    return false;
+  }
+  if (mbedtls_md_setup(&hash.context, hash.info, 0) != 0) {
+    mbedtls_md_free(&hash.context);
+    return false;
+  }
+  if (mbedtls_md_starts(&hash.context) != 0) {
+    mbedtls_md_free(&hash.context);
+    return false;
+  }
+  hash.active = true;
+  return true;
+}
+
+bool pullOtaHashUpdate(PullOtaHash &hash, const uint8_t *data, size_t len) {
+  return hash.active && mbedtls_md_update(&hash.context, data, len) == 0;
+}
+
+bool pullOtaHashFinish(PullOtaHash &hash, uint8_t digest[32]) {
+  if (!hash.active) {
+    return false;
+  }
+  bool ok = mbedtls_md_finish(&hash.context, digest) == 0;
+  mbedtls_md_free(&hash.context);
+  hash.active = false;
+  return ok;
+}
+
+String pullOtaHexDigest(const uint8_t digest[32]) {
+  char text[65];
+  for (uint8_t i = 0; i < 32; i++) {
+    snprintf(text + i * 2, 3, "%02x", digest[i]);
+  }
+  text[64] = '\0';
+  return String(text);
+}
+
+bool sha256Matches(const uint8_t digest[32], const String &expected) {
+  return pullOtaHexDigest(digest) == expected;
+}
+
+bool pullOtaPublicKeysConfigured() {
+  return strlen(HDS_OTA_MANIFEST_PUBLIC_KEY_1_PEM) > 0 &&
+         strlen(HDS_OTA_MANIFEST_PUBLIC_KEY_2_PEM) > 0 &&
+         strlen(HDS_OTA_MANIFEST_PUBLIC_KEY_3_PEM) > 0;
+}
+
+bool pullOtaSha256String(const String &body, uint8_t digest[32]) {
+  PullOtaHash hash;
+  if (!pullOtaHashBegin(hash)) {
+    return false;
+  }
+  bool ok = pullOtaHashUpdate(hash, (const uint8_t *)body.c_str(), body.length());
+  return pullOtaHashFinish(hash, digest) && ok;
+}
+
+bool pullOtaVerifyManifestSignatureWithKeys(
+    const String &body,
+    const uint8_t *signature,
+    size_t signatureLen,
+    const char *const *publicKeys,
+    size_t publicKeyCount) {
+  if (signature == nullptr || signatureLen == 0 || publicKeys == nullptr || publicKeyCount == 0) {
+    return false;
+  }
+  uint8_t digest[32];
+  if (!pullOtaSha256String(body, digest)) {
+    return false;
+  }
+  for (size_t keyIndex = 0; keyIndex < publicKeyCount; keyIndex++) {
+    const char *key = publicKeys[keyIndex];
+    if (key == nullptr || key[0] == '\0') continue;
+    mbedtls_pk_context publicKey;
+    mbedtls_pk_init(&publicKey);
+    int parsed = mbedtls_pk_parse_public_key(
+        &publicKey, (const unsigned char *)key, strlen(key) + 1);
+    int verified = parsed == 0
+                       ? mbedtls_pk_verify(
+                             &publicKey, MBEDTLS_MD_SHA256, digest, sizeof(digest),
+                             signature, signatureLen)
+                       : -1;
+    mbedtls_pk_free(&publicKey);
+    if (verified == 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool pullOtaVerifyManifestSignature(
+    const String &body,
+    const uint8_t *signature,
+    size_t signatureLen) {
+  if (!pullOtaPublicKeysConfigured()) return false;
+  const char *const publicKeys[] = {
+      HDS_OTA_MANIFEST_PUBLIC_KEY_1_PEM,
+      HDS_OTA_MANIFEST_PUBLIC_KEY_2_PEM,
+      HDS_OTA_MANIFEST_PUBLIC_KEY_3_PEM,
+  };
+  return pullOtaVerifyManifestSignatureWithKeys(
+      body, signature, signatureLen, publicKeys, sizeof(publicKeys) / sizeof(publicKeys[0]));
+}
+
+bool pullOtaPartitionShaMatches(const PullOtaAsset &asset, const esp_partition_t *partition) {
+  if (partition == nullptr || asset.size > partition->size) {
+    return false;
+  }
+  PullOtaHash hash;
+  if (!pullOtaHashBegin(hash)) {
+    return false;
+  }
+  uint8_t buffer[HDS_OTA_BUFFER_BYTES];
+  size_t checked = 0;
+  bool ok = true;
+  while (checked < asset.size) {
+    size_t count = asset.size - checked;
+    if (count > sizeof(buffer)) {
+      count = sizeof(buffer);
+    }
+    if (esp_partition_read(partition, checked, buffer, count) != ESP_OK ||
+        !pullOtaHashUpdate(hash, buffer, count)) {
+      ok = false;
+      break;
+    }
+    checked += count;
+  }
+  uint8_t digest[32];
+  bool hashFinished = pullOtaHashFinish(hash, digest);
+  return ok && hashFinished && checked == asset.size &&
+         sha256Matches(digest, asset.sha256);
+}
+
+bool pullOtaPartitionShaMatches(const PullOtaAsset &asset) {
+  return pullOtaPartitionShaMatches(asset, esp_partition_find_first(
+      ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_SPIFFS,
+      HDS_OTA_FS_PARTITION_LABEL));
+}
+
+bool pullOtaLittleFsPartitionSizeMatches(uint32_t expectedSize) {
+  const esp_partition_t *partition = esp_partition_find_first(
+      ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_SPIFFS,
+      HDS_OTA_FS_PARTITION_LABEL);
+  return partition != nullptr && partition->size == expectedSize;
+}
+
+
+bool pullOtaClockIsReady() {
+  return time(nullptr) > 1700000000;
+}
+
+void pullOtaStartClockSync() {
+  configTime(0, 0, "pool.ntp.org", "time.nist.gov");
+}
+
+bool pullOtaClockReady() {
+  if (pullOtaClockIsReady()) {
+    return true;
+  }
+  pullOtaStartClockSync();
+  unsigned long startedAt = millis();
+  while (millis() - startedAt < HDS_OTA_CLOCK_TIMEOUT_MS) {
+    if (pullOtaClockIsReady()) {
+      return true;
+    }
+    delay(200);
+  }
+  return false;
+}
+
+bool pullOtaBeginHttp(HTTPClient &http, WiFiClientSecure &client, const String &url) {
+  if (!url.startsWith("https://")) {
+    return false;
+  }
+  client.setCACert(HDS_OTA_CA_CERTS);
+  client.setTimeout(HDS_OTA_HTTP_TIMEOUT_MS / 1000);
+  http.setTimeout(HDS_OTA_HTTP_TIMEOUT_MS);
+  http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+  return http.begin(client, url);
+}
+
+bool pullOtaReadHttpBody(HTTPClient &http, String &body, size_t maxBytes) {
+  int contentLength = http.getSize();
+  if (contentLength > 0 && (size_t)contentLength > maxBytes) {
+    return false;
+  }
+  if (contentLength > 0) {
+    body.reserve(contentLength);
+  } else {
+    body.reserve(1024);
+  }
+  WiFiClient *stream = http.getStreamPtr();
+  uint8_t buffer[256];
+  size_t total = 0;
+  unsigned long lastRead = millis();
+  while (http.connected() || stream->available()) {
+    int available = stream->available();
+    if (available > 0) {
+      size_t request = (size_t)available;
+      if (request > sizeof(buffer)) request = sizeof(buffer);
+      size_t count = stream->readBytes(buffer, request);
+      if (count == 0) {
+        return false;
+      }
+      total += count;
+      if (total > maxBytes) {
+        return false;
+      }
+      body.concat((const char *)buffer, count);
+      lastRead = millis();
+      if (contentLength > 0 && total >= (size_t)contentLength) {
+        break;
+      }
+    } else {
+      if (millis() - lastRead > HDS_OTA_HTTP_TIMEOUT_MS) {
+        return false;
+      }
+      delay(10);
+    }
+  }
+  return total > 0 && (contentLength <= 0 || total == (size_t)contentLength);
+}
+
+bool pullOtaReadHttpBytes(
+    HTTPClient &http,
+    uint8_t *buffer,
+    size_t maxBytes,
+    size_t &length) {
+  length = 0;
+  int contentLength = http.getSize();
+  if (contentLength > 0 && (size_t)contentLength > maxBytes) {
+    return false;
+  }
+  WiFiClient *stream = http.getStreamPtr();
+  unsigned long lastRead = millis();
+  while (http.connected() || stream->available()) {
+    int available = stream->available();
+    if (available > 0) {
+      size_t request = (size_t)available;
+      if (length + request > maxBytes) {
+        return false;
+      }
+      size_t count = stream->readBytes(buffer + length, request);
+      if (count == 0) {
+        return false;
+      }
+      length += count;
+      lastRead = millis();
+      if (contentLength > 0 && length >= (size_t)contentLength) {
+        break;
+      }
+    } else {
+      if (millis() - lastRead > HDS_OTA_HTTP_TIMEOUT_MS) {
+        return false;
+      }
+      delay(10);
+    }
+  }
+  return length > 0 && (contentLength <= 0 || length == (size_t)contentLength);
+}
+
+bool pullOtaFetchManifest(const String &manifestUrl, String &body) {
+  body = "";
+  if (!pullOtaManifestUrlAllowed(manifestUrl)) {
+    return false;
+  }
+  HTTPClient http;
+  WiFiClientSecure client;
+  if (!pullOtaBeginHttp(http, client, manifestUrl)) {
+    return false;
+  }
+  int code = http.GET();
+  if (code != HTTP_CODE_OK) {
+    http.end();
+    return false;
+  }
+  bool ok = pullOtaReadHttpBody(http, body, HDS_OTA_MANIFEST_MAX_BYTES);
+  http.end();
+  return ok;
+}
+
+String pullOtaManifestSignatureUrl(const String &manifestUrl) {
+  String manifestName = "manifest.json";
+  if (!pullOtaManifestUrlAllowed(manifestUrl) || !manifestUrl.endsWith(manifestName)) {
+    return "";
+  }
+  return manifestUrl.substring(0, manifestUrl.length() - manifestName.length()) +
+         "manifest.sig";
+}
+
+bool pullOtaFetchManifestSignature(
+    const String &manifestUrl,
+    uint8_t *signature,
+    size_t &signatureLen) {
+  String signatureUrl = pullOtaManifestSignatureUrl(manifestUrl);
+  if (signatureUrl.length() == 0) {
+    return false;
+  }
+  HTTPClient http;
+  WiFiClientSecure client;
+  if (!pullOtaBeginHttp(http, client, signatureUrl)) {
+    return false;
+  }
+  int code = http.GET();
+  if (code != HTTP_CODE_OK) {
+    http.end();
+    return false;
+  }
+  bool ok = pullOtaReadHttpBytes(
+      http, signature, HDS_OTA_MANIFEST_SIGNATURE_MAX_BYTES, signatureLen);
+  http.end();
+  return ok;
+}
+
+bool pullOtaFetchSignedManifest(const String &manifestUrl, String &body) {
+  if (!pullOtaFetchManifest(manifestUrl, body)) {
+    return false;
+  }
+  uint8_t signature[HDS_OTA_MANIFEST_SIGNATURE_MAX_BYTES];
+  size_t signatureLen = 0;
+  if (!pullOtaFetchManifestSignature(manifestUrl, signature, signatureLen)) {
+    return false;
+  }
+  return pullOtaVerifyManifestSignature(body, signature, signatureLen);
+}
+
+bool pullOtaFetchSignedManifest(String &body) {
+  return pullOtaFetchSignedManifest(HDS_OTA_MANIFEST_URL, body);
+}
+
+String pullOtaReleaseManifestUrl(const String &version, bool prefixedTag) {
+  return String(HDS_OTA_ASSET_URL_PREFIX) + (prefixedTag ? "v" : "") +
+         version + "/manifest.json";
+}
+
+bool pullOtaFetchCurrentReleaseManifest(PullOtaManifest &manifest) {
+  String currentVersion;
+  if (!pullOtaCurrentReleaseVersion(currentVersion)) {
+    return false;
+  }
+  const bool prefixedTags[] = {true, false};
+  for (bool prefixedTag : prefixedTags) {
+    String body;
+    if (pullOtaFetchSignedManifest(
+            pullOtaReleaseManifestUrl(currentVersion, prefixedTag), body) &&
+        pullOtaParseRollbackManifest(body, currentVersion, manifest)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool pullOtaEnsureWifi(unsigned long timeoutMs = HDS_OTA_WIFI_TIMEOUT_MS) {
+  if (!wifiCredentialsSaved()) {
+    return pullOtaFail("No saved WiFi", "Use setup first");
+  }
+  if (!b_wifiEnabled) {
+    pullOtaDraw("Starting WiFi");
+    b_wifiOnBoot = true;
+    wifi_init();
+  }
+  unsigned long startedAt = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - startedAt < timeoutMs) {
+    wifiSupervise();
+    delay(100);
+  }
+  if (WiFi.status() != WL_CONNECTED) {
+    return pullOtaFail("WiFi failed", "Try again");
+  }
+  return true;
+}
+
+bool pullOtaClearPendingLittleFs() {
+  Preferences preferences;
+  if (!preferences.begin("ota_fs", false)) {
+    return false;
+  }
+  bool ok = preferences.clear();
+  preferences.end();
+  return ok;
+}
+
+bool pullOtaStorePendingLittleFs(
+    const PullOtaManifest &manifest,
+    const PullOtaManifest &rollbackManifest,
+    const String &combinationHash = "",
+    const String &rollbackCombinationHash = "") {
+  const bool forwardRecovery = !rollbackManifest.littlefs.present;
+  if (!manifest.littlefs.present || !manifest.littlefs.required ||
+      (forwardRecovery ? manifest.forwardRecoveryVersion != HDS_OTA_FORWARD_RECOVERY_VERSION
+                       : !rollbackManifest.littlefs.required) ||
+      (combinationHash.length() > 0 && !pullOtaShaLooksValid(combinationHash)) ||
+      (rollbackCombinationHash.length() > 0 &&
+       !pullOtaShaLooksValid(rollbackCombinationHash))) {
+    return false;
+  }
+  Preferences preferences;
+  if (!preferences.begin("ota_fs", false)) {
+    return false;
+  }
+  bool ok = preferences.clear() &&
+            (combinationHash.length() == 0 ||
+             preferences.putString("install_combo", combinationHash) == 64) &&
+            (!forwardRecovery ||
+             (preferences.putUChar("recovery", HDS_OTA_FORWARD_RECOVERY_VERSION) > 0 &&
+              preferences.putString("fw_sha", manifest.firmware.sha256) > 0 &&
+              preferences.putUInt("fw_size", (uint32_t)manifest.firmware.size) > 0)) &&
+            (combinationHash.length() == 0 ||
+             preferences.putString("combo", combinationHash) == 64) &&
+            (rollbackCombinationHash.length() == 0 ||
+             preferences.putString("rb_combo", rollbackCombinationHash) == 64) &&
+            preferences.putString("url", manifest.littlefs.url) > 0 &&
+            preferences.putUInt("size", (uint32_t)manifest.littlefs.size) > 0 &&
+            preferences.putString("sha", manifest.littlefs.sha256) > 0 &&
+            preferences.putString("version", manifest.version) > 0 &&
+            (forwardRecovery ||
+            (preferences.putString("rb_url", rollbackManifest.littlefs.url) > 0 &&
+            preferences.putUInt("rb_size", (uint32_t)rollbackManifest.littlefs.size) > 0 &&
+            preferences.putString("rb_sha", rollbackManifest.littlefs.sha256) > 0 &&
+            preferences.putString("rb_ver", rollbackManifest.version) > 0)) &&
+            preferences.putString("label", manifest.fsPartitionLabel) > 0 &&
+            preferences.putUInt("fs_size", manifest.fsPartitionSize) > 0 &&
+            preferences.putUInt("fs_schema", manifest.fsSchema) > 0 &&
+            preferences.putBool("restore", false) > 0 &&
+            preferences.putBool("restore_try", false) > 0 &&
+            preferences.putBool("fs_dirty", false) > 0 &&
+            preferences.putUChar("target_try", 0) > 0 &&
+            preferences.putBool("pending", true) > 0;
+  preferences.end();
+  return ok;
+}
+
+bool pullOtaActivateRollbackLittleFs(const PullOtaPendingLittleFs &pending);
+bool pullOtaRecoveryError();
+
+bool pullOtaLoadPendingLittleFs(PullOtaPendingLittleFs &pending) {
+  Preferences preferences;
+  if (!preferences.begin("ota_fs", true)) {
+    return false;
+  }
+  bool hasPending = preferences.getBool("pending", false) &&
+                    !(preferences.getBool("paused", false) && filesystemRecoveryActive.load());
+  if (!hasPending) {
+    preferences.end();
+    return false;
+  }
+  PullOtaPendingLittleFs loaded;
+  loaded.present = true;
+  loaded.asset.present = true;
+  loaded.asset.required = true;
+  loaded.asset.url = preferences.getString("url", "");
+  loaded.asset.size = (size_t)preferences.getUInt("size", 0);
+  loaded.asset.sha256 = preferences.getString("sha", "");
+  loaded.asset.sha256.trim();
+  loaded.asset.sha256.toLowerCase();
+  loaded.version = preferences.getString("version", "");
+  loaded.version.trim();
+  loaded.combinationHash = preferences.getString("combo", "");
+  loaded.combinationHash.trim();
+  loaded.combinationHash.toLowerCase();
+  loaded.installCombinationHash = preferences.getString("install_combo", "");
+  loaded.installCombinationHash.trim();
+  loaded.installCombinationHash.toLowerCase();
+  loaded.restore = preferences.getBool("restore", false);
+  loaded.restoreAttempted = preferences.getBool("restore_try", false);
+  loaded.filesystemDirty = preferences.getBool("fs_dirty", false);
+  const uint8_t recoveryVersion = preferences.getUChar("recovery", 0);
+  loaded.forwardRecovery = recoveryVersion == HDS_OTA_FORWARD_RECOVERY_VERSION;
+  PullOtaAsset recoveryFirmware;
+  recoveryFirmware.sha256 = preferences.getString("fw_sha", "");
+  recoveryFirmware.size = preferences.getUInt("fw_size", 0);
+  loaded.targetAttempts = preferences.getUChar("target_try", 0);
+  loaded.rollbackAsset.present = true;
+  loaded.rollbackAsset.required = true;
+  loaded.rollbackAsset.url = preferences.getString("rb_url", "");
+  loaded.rollbackAsset.size = (size_t)preferences.getUInt("rb_size", 0);
+  loaded.rollbackAsset.sha256 = preferences.getString("rb_sha", "");
+  loaded.rollbackAsset.sha256.trim();
+  loaded.rollbackAsset.sha256.toLowerCase();
+  loaded.rollbackVersion = preferences.getString("rb_ver", "");
+  loaded.rollbackVersion.trim();
+  loaded.rollbackCombinationHash = preferences.getString("rb_combo", "");
+  loaded.rollbackCombinationHash.trim();
+  loaded.rollbackCombinationHash.toLowerCase();
+  loaded.fsPartitionLabel = preferences.getString("label", "");
+  loaded.fsPartitionSize = preferences.getUInt("fs_size", 0);
+  loaded.fsSchema = preferences.getUInt("fs_schema", 0);
+  preferences.end();
+  if (recoveryVersion != 0 &&
+      (!loaded.forwardRecovery || loaded.restore || recoveryFirmware.size == 0 ||
+       !pullOtaShaLooksValid(recoveryFirmware.sha256))) {
+    pullOtaRecoveryError();
+    return false;
+  }
+  const bool targetUrlAllowed = loaded.combinationHash.length() == 0
+      ? pullOtaUrlAllowed(loaded.asset.url)
+      : pullOtaCustomLittleFsUrlAllowed(
+          loaded.asset.url, loaded.combinationHash);
+  if (!targetUrlAllowed ||
+      !pullOtaShaLooksValid(loaded.asset.sha256) ||
+      loaded.asset.size != HDS_OTA_FS_PARTITION_SIZE ||
+      loaded.fsPartitionLabel != HDS_OTA_FS_PARTITION_LABEL ||
+      loaded.fsPartitionSize != HDS_OTA_FS_PARTITION_SIZE ||
+      loaded.fsSchema != HDS_OTA_FS_SCHEMA) {
+    if (loaded.filesystemDirty) pullOtaRecoveryError();
+    else pullOtaClearPendingLittleFs();
+    return false;
+  }
+  const bool rollbackUrlAllowed = loaded.rollbackCombinationHash.length() == 0
+      ? pullOtaUrlAllowed(loaded.rollbackAsset.url)
+      : pullOtaCustomLittleFsUrlAllowed(
+          loaded.rollbackAsset.url, loaded.rollbackCombinationHash);
+  if (!loaded.restore && !loaded.forwardRecovery &&
+      (!rollbackUrlAllowed ||
+       !pullOtaShaLooksValid(loaded.rollbackAsset.sha256) ||
+       loaded.rollbackAsset.size != HDS_OTA_FS_PARTITION_SIZE ||
+       (loaded.rollbackCombinationHash.length() == 0 &&
+        !pullOtaVersionIsRelease(loaded.rollbackVersion.c_str())))) {
+    if (loaded.filesystemDirty) pullOtaRecoveryError();
+    else pullOtaClearPendingLittleFs();
+    return false;
+  }
+  const bool recoveryFirmwareMatches = !loaded.forwardRecovery ||
+      pullOtaPartitionShaMatches(recoveryFirmware, esp_ota_get_running_partition());
+  if (!pullOtaIdentityMatches(loaded.version, loaded.combinationHash) || !recoveryFirmwareMatches) {
+    if (loaded.forwardRecovery && loaded.filesystemDirty) {
+      pullOtaRecoveryError();
+      return false;
+    }
+    if (!loaded.restore && loaded.filesystemDirty &&
+        pullOtaIdentityMatches(
+            loaded.rollbackVersion, loaded.rollbackCombinationHash)) {
+      if (!pullOtaActivateRollbackLittleFs(loaded)) {
+        pullOtaRecoveryError();
+        return false;
+      }
+      return pullOtaLoadPendingLittleFs(pending);
+    }
+    pullOtaClearPendingLittleFs();
+    return false;
+  }
+  pending = loaded;
+  return true;
+}
+
+bool pullOtaActivateRollbackLittleFs(const PullOtaPendingLittleFs &pending) {
+  Preferences preferences;
+  if (!preferences.begin("ota_fs", false)) {
+    return false;
+  }
+  const String attemptedCombination = preferences.getString("install_combo", pending.combinationHash);
+  bool ok = preferences.clear() &&
+            (attemptedCombination.length() == 0 ||
+             preferences.putString("install_combo", attemptedCombination) == 64) &&
+            (pending.rollbackCombinationHash.length() == 0 ||
+             preferences.putString(
+                 "combo", pending.rollbackCombinationHash) == 64) &&
+            preferences.putString("url", pending.rollbackAsset.url) > 0 &&
+            preferences.putUInt("size", (uint32_t)pending.rollbackAsset.size) > 0 &&
+            preferences.putString("sha", pending.rollbackAsset.sha256) > 0 &&
+            preferences.putString("version", pending.rollbackVersion) > 0 &&
+            preferences.putString("label", pending.fsPartitionLabel) > 0 &&
+            preferences.putUInt("fs_size", pending.fsPartitionSize) > 0 &&
+            preferences.putUInt("fs_schema", pending.fsSchema) > 0 &&
+            preferences.putBool("restore", true) > 0 &&
+            preferences.putBool("restore_try", false) > 0 &&
+            preferences.putBool("pending", true) > 0;
+  preferences.end();
+  return ok;
+}
+
+bool pullOtaBeginRollbackLittleFsAttempt() {
+  Preferences preferences;
+  if (!preferences.begin("ota_fs", false)) {
+    return false;
+  }
+  bool ok = preferences.putBool("restore_try", true) > 0;
+  preferences.end();
+  return ok;
+}
+
+bool pullOtaBeginTargetLittleFsAttempt(uint8_t attempt) {
+  Preferences preferences;
+  if (!preferences.begin("ota_fs", false)) {
+    return false;
+  }
+  bool ok = preferences.putUChar("target_try", attempt) > 0;
+  preferences.end();
+  return ok;
+}
+
+bool pullOtaMarkPendingLittleFsDirty() {
+  Preferences preferences;
+  if (!preferences.begin("ota_fs", false)) {
+    return false;
+  }
+  bool ok = preferences.putBool("fs_dirty", true) > 0;
+  preferences.end();
+  return ok;
+}
+
+bool pullOtaHasPendingLittleFs() {
+  PullOtaPendingLittleFs pending;
+  return pullOtaLoadPendingLittleFs(pending);
+}
+
+bool pullOtaWaitForRelease(unsigned long timeoutMs) {
+  unsigned long startedAt = millis();
+  while (millis() - startedAt < timeoutMs) {
+    if (digitalRead(BUTTON_SQUARE) == HIGH && digitalRead(BUTTON_CIRCLE) == HIGH) {
+      return true;
+    }
+    delay(20);
+  }
+  return false;
+}
+
+void pullOtaDrawReleaseChoice(
+    const PullOtaReleaseList &catalog,
+    const PullOtaReleaseSelection &selection,
+    uint8_t index) {
+  char page[24];
+  snprintf(page, sizeof(page), "%u/%u O next Sq ok", index + 1, selection.count);
+  pullOtaDraw(
+      "Install version",
+      catalog.releases[selection.indices[index]].version.c_str(),
+      page);
+}
+
+bool pullOtaPickRelease(
+    const PullOtaReleaseList &catalog,
+    const PullOtaReleaseSelection &selection,
+    uint8_t *selectedCatalogIndex) {
+  if (selection.count == 0 || selectedCatalogIndex == nullptr) {
+    return false;
+  }
+  pullOtaWaitForRelease(1000);
+  uint8_t index = 0;
+  bool circleWasDown = false;
+  bool squareWasDown = false;
+  unsigned long circleDownAt = 0;
+  unsigned long startedAt = millis();
+  pullOtaDrawReleaseChoice(catalog, selection, index);
+  while (millis() - startedAt < HDS_OTA_PICK_TIMEOUT_MS) {
+    bool circleDown = digitalRead(BUTTON_CIRCLE) == LOW;
+    bool squareDown = digitalRead(BUTTON_SQUARE) == LOW;
+    if (circleDown && !circleWasDown) {
+      circleDownAt = millis();
+    }
+    if (circleDown && circleDownAt > 0 &&
+        millis() - circleDownAt >= HDS_OTA_CONFIRM_HOLD_MS) {
+      return pullOtaFail("Update cancelled");
+    }
+    if (circleWasDown && !circleDown) {
+      index = (index + 1) % selection.count;
+      pullOtaDrawReleaseChoice(catalog, selection, index);
+      startedAt = millis();
+      circleDownAt = 0;
+    }
+    if (squareDown && !squareWasDown) {
+      *selectedCatalogIndex = selection.indices[index];
+      pullOtaWaitForRelease(1000);
+      return true;
+    }
+    circleWasDown = circleDown;
+    squareWasDown = squareDown;
+    delay(20);
+  }
+  return pullOtaFail("Update cancelled");
+}
+
+bool pullOtaConfirmInstall(const PullOtaManifest &manifest) {
+  pullOtaWaitForRelease(3000);
+  char versionLine[32];
+  snprintf(versionLine, sizeof(versionLine), "%s -> %s",
+           pullOtaCurrentVersion().c_str(), manifest.version.c_str());
+  pullOtaDraw("Install version", versionLine, "Hold square");
+  unsigned long startedAt = millis();
+  unsigned long heldSince = 0;
+  while (millis() - startedAt < HDS_OTA_CONFIRM_TIMEOUT_MS) {
+    if (digitalRead(BUTTON_SQUARE) == LOW) {
+      if (heldSince == 0) {
+        heldSince = millis();
+      }
+      if (millis() - heldSince >= HDS_OTA_CONFIRM_HOLD_MS) {
+        return true;
+      }
+    } else {
+      heldSince = 0;
+    }
+    delay(20);
+  }
+  return pullOtaFail("Update cancelled");
+}
+
+void pullOtaPauseFilesystemServices() {
+  webFilesystemReady.store(false);
+#if HDS_FEATURE_WEBSERVER
+  stopWebServer();
+#endif
+  LittleFS.end();
+  delay(200);
+}
+
+void pullOtaResumeFilesystemServices() {
+  if (!filesystemRecoveryActive.load()) LittleFS.begin();
+#if HDS_FEATURE_WEBSERVER
+  if (b_wifiEnabled) {
+    startWebServer();
+  }
+#endif
+}
+
+bool pullOtaStreamAsset(
+    const PullOtaAsset &asset,
+    int command,
+    const char *label,
+    bool *filesystemWriteStarted = nullptr) {
+  if (!otaRuntimeIsPaused()) {
+    return pullOtaFail("OTA runtime pause failed", label);
+  }
+  HTTPClient http;
+  WiFiClientSecure client;
+  if (!pullOtaBeginHttp(http, client, asset.url)) {
+    return pullOtaFail("Bad OTA URL", label);
+  }
+  int code = http.GET();
+  if (code != HTTP_CODE_OK) {
+    http.end();
+    return pullOtaFail("Download failed", label);
+  }
+  int contentLength = http.getSize();
+  if (contentLength > 0 && (size_t)contentLength != asset.size) {
+    http.end();
+    return pullOtaFail("Size mismatch", label);
+  }
+  bool filesystemWrite = command == U_SPIFFS;
+  if (filesystemWrite && filesystemWriteStarted != nullptr) {
+    if (!pullOtaMarkPendingLittleFsDirty()) {
+      http.end();
+      return pullOtaFail("FS state failed", label);
+    }
+    *filesystemWriteStarted = true;
+  }
+  if (filesystemWrite) {
+    pullOtaPauseFilesystemServices();
+  }
+  if (!Update.begin(asset.size, command)) {
+    http.end();
+    if (filesystemWrite) {
+      pullOtaResumeFilesystemServices();
+    }
+    return pullOtaFail("Update begin failed", label);
+  }
+  PullOtaHash hash;
+  if (!pullOtaHashBegin(hash)) {
+    Update.abort();
+    http.end();
+    if (filesystemWrite) {
+      pullOtaResumeFilesystemServices();
+    }
+    return pullOtaFail("Hash init failed", label);
+  }
+  WiFiClient *stream = http.getStreamPtr();
+  uint8_t buffer[HDS_OTA_BUFFER_BYTES];
+  size_t written = 0;
+  int lastPercent = -1;
+  unsigned long lastRead = millis();
+  bool ok = true;
+  while ((http.connected() || stream->available()) && written < asset.size) {
+    int available = stream->available();
+    if (available > 0) {
+      size_t request = (size_t)available;
+      if (request > sizeof(buffer)) request = sizeof(buffer);
+      size_t remaining = asset.size - written;
+      if (request > remaining) request = remaining;
+      size_t count = stream->readBytes(buffer, request);
+      if (count == 0 || !pullOtaHashUpdate(hash, buffer, count) ||
+          Update.write(buffer, count) != count) {
+        ok = false;
+        break;
+      }
+      written += count;
+      uint8_t percent = asset.size == 0 ? 0 : (uint8_t)((written * 100U) / asset.size);
+      if ((int)percent != lastPercent && (percent % 5 == 0 || percent == 100)) {
+        lastPercent = percent;
+        pullOtaDrawProgress(label, percent);
+      }
+      lastRead = millis();
+    } else {
+      if (millis() - lastRead > HDS_OTA_HTTP_TIMEOUT_MS) {
+        ok = false;
+        break;
+      }
+      delay(1);
+    }
+  }
+  uint8_t digest[32];
+  bool hashFinished = pullOtaHashFinish(hash, digest);
+  ok = ok && written == asset.size && hashFinished &&
+       sha256Matches(digest, asset.sha256);
+  if (!ok) {
+    Update.abort();
+    http.end();
+    if (filesystemWrite) {
+      pullOtaResumeFilesystemServices();
+    }
+    return pullOtaFail("Hash mismatch", label);
+  }
+  if (!Update.end(true)) {
+    http.end();
+    if (filesystemWrite) {
+      pullOtaResumeFilesystemServices();
+    }
+    return pullOtaFail("Update end failed", label);
+  }
+  http.end();
+  return true;
+}
+
+bool pullOtaInstall(
+    const PullOtaManifest &manifest,
+    const PullOtaManifest &rollbackManifest,
+    const String &combinationHash = "",
+    const String &rollbackCombinationHash = "") {
+  if (!otaRuntimeIsPaused()) {
+    return pullOtaFail("OTA runtime pause failed");
+  }
+  if (!rollbackManifest.littlefs.present &&
+      manifest.forwardRecoveryVersion != HDS_OTA_FORWARD_RECOVERY_VERSION) {
+    return pullOtaFail("Recovery unsupported", "Choose newer build");
+  }
+  if ((pullOtaCompareVersions(manifest.version, "3.1.15") < 0 ||
+       (rollbackManifest.version.length() > 0 &&
+        pullOtaCompareVersions(rollbackManifest.version, "3.1.15") < 0)) &&
+      !params.prepareLegacyDowngrade()) {
+    return pullOtaFail("WiFi storage failed", "Update cancelled");
+  }
+  b_ota = true;
+  if (!pullOtaStorePendingLittleFs(
+          manifest,
+          rollbackManifest,
+          combinationHash,
+          rollbackCombinationHash)) {
+    return pullOtaFail("FS state failed");
+  }
+  customBuildReportInstallState(combinationHash, "installing");
+  if (!pullOtaStreamAsset(manifest.firmware, U_FLASH, "Firmware")) {
+    customBuildReportInstallState(combinationHash, "failed");
+    pullOtaClearPendingLittleFs();
+    return false;
+  }
+  pullOtaDraw("Firmware done", "Restarting", "Web UI next");
+  delay(1500);
+  remoteQueueOtaResetAt(millis());
+  return true;
+}
+
+bool pullOtaVerifyPendingLittleFs(const PullOtaPendingLittleFs &pending) {
+  if (!pullOtaLittleFsPartitionSizeMatches(pending.fsPartitionSize)) {
+    return false;
+  }
+  if (!pullOtaPartitionShaMatches(pending.asset)) {
+    return false;
+  }
+  LittleFS.end();
+  if (!LittleFS.begin()) {
+    return false;
+  }
+  return LittleFS.totalBytes() > 0;
+}
+
+bool pullOtaRecoveryError() {
+  pullOtaPauseFilesystemServices();
+  if (!filesystemRecoveryStore(true)) return false;
+  Preferences preferences;
+  if (!preferences.begin("ota_fs", false)) return false;
+  const String attemptedCombination = preferences.getString(
+      "install_combo", preferences.getBool("restore", false)
+          ? String("") : preferences.getString("combo", ""));
+  const bool paused = preferences.putBool("paused", true) > 0;
+  preferences.end();
+  if (!paused || !hdsOtaAcceptFilesystemRecovery()) return false;
+  if (pullOtaShaLooksValid(attemptedCombination)) {
+    customBuildReportInstallState(attemptedCombination, "failed");
+  }
+  Serial.println("[pull-ota] LittleFS could not be installed; WiFi setup and OTA remain available");
+  pullOtaFail("LittleFS could not", "be installed");
+  return true;
+}
+
+bool pullOtaAttemptPendingLittleFs(
+    const PullOtaPendingLittleFs &pending,
+    bool &filesystemWriteStarted) {
+  pullOtaDraw("Updating web UI", pending.version.c_str());
+  if (!pullOtaEnsureWifi(HDS_OTA_PENDING_WIFI_TIMEOUT_MS)) {
+    return false;
+  }
+  if (!pullOtaClockReady()) {
+    pullOtaFail("Clock failed", "TLS blocked");
+    return false;
+  }
+  b_ota = true;
+  if (!pullOtaStreamAsset(
+          pending.asset, U_SPIFFS, "LittleFS", &filesystemWriteStarted)) {
+    return false;
+  }
+  if (!pullOtaVerifyPendingLittleFs(pending)) {
+    pullOtaFail("FS verify failed", "Retry later");
+    return false;
+  }
+  return true;
+}
+
+bool pullOtaResumePendingLittleFs() {
+  if (!otaRuntimeIsPaused()) {
+    return pullOtaFail("OTA runtime pause failed");
+  }
+  PullOtaPendingLittleFs pending;
+  if (!pullOtaLoadPendingLittleFs(pending)) {
+    return true;
+  }
+  uint8_t maxAttempts = pending.restore ? 1 : 2;
+  uint8_t attempts = pending.restore ? 0 : pending.targetAttempts;
+  bool filesystemWriteStarted = pending.filesystemDirty;
+  bool updated = pullOtaVerifyPendingLittleFs(pending);
+  if (pending.forwardRecovery && !updated &&
+      (!filesystemRecoveryStore(true) || !hdsOtaAcceptFilesystemRecovery())) {
+    return false;
+  }
+  while (!updated && attempts < maxAttempts) {
+    attempts++;
+    bool attemptRecorded = pending.restore
+        ? !pending.restoreAttempted && pullOtaBeginRollbackLittleFsAttempt()
+        : pullOtaBeginTargetLittleFsAttempt(attempts);
+    if (!attemptRecorded) {
+      return pullOtaRecoveryError();
+    }
+    bool attemptWriteStarted = false;
+    if (pullOtaAttemptPendingLittleFs(pending, attemptWriteStarted)) {
+      filesystemWriteStarted = filesystemWriteStarted || attemptWriteStarted;
+      updated = true;
+      break;
+    }
+    filesystemWriteStarted = filesystemWriteStarted || attemptWriteStarted;
+    if (pending.restore) {
+      return pullOtaRecoveryError();
+    }
+  }
+  if (!updated) {
+    if (pending.forwardRecovery) return pullOtaRecoveryError();
+    if (filesystemWriteStarted && !pullOtaActivateRollbackLittleFs(pending)) {
+      return pullOtaRecoveryError();
+    }
+    return false;
+  }
+  hdsOtaRollbackMarkValid();
+  if (!filesystemRecoveryStore(false)) return pullOtaRecoveryError();
+  if (!pullOtaClearPendingLittleFs()) {
+    pullOtaFail("FS state failed");
+    return pullOtaRecoveryError();
+  }
+  customBuildReportInstalled(pending.restore ? pending.installCombinationHash : "");
+  pullOtaDraw("Update done", "Restarting");
+  delay(1500);
+  remoteQueueOtaResetAt(millis());
+  return true;
+}
+
+bool pullOtaFindTargetRelease(
+    const PullOtaReleaseList &catalog,
+    const PullOtaReleaseSelection &selection,
+    const PullOtaTargetVersion &target,
+    uint8_t *selectedCatalogIndex) {
+  char wanted[HDS_OTA_TARGET_VERSION_BUFFER_BYTES];
+  if (selectedCatalogIndex == nullptr ||
+      !pullOtaFormatTargetVersion(target, wanted, sizeof(wanted))) {
+    return false;
+  }
+  for (uint8_t i = 0; i < selection.count; i++) {
+    uint8_t catalogIndex = selection.indices[i];
+    char offered[HDS_OTA_TARGET_VERSION_BUFFER_BYTES];
+    if (!pullOtaNormalizeVersionPrefix(
+            catalog.releases[catalogIndex].version.c_str(), offered, sizeof(offered))) {
+      continue;
+    }
+    if (strcmp(offered, wanted) == 0) {
+      *selectedCatalogIndex = catalogIndex;
+      return true;
+    }
+  }
+  return false;
+}
+
+void pullOtaRunUpdate(const PullOtaTargetVersion &target) {
+  if (pullOtaHasPendingLittleFs()) {
+    pullOtaResumePendingLittleFs();
+    return;
+  }
+  pullOtaDraw("Checking update");
+  if (!pullOtaEnsureWifi()) {
+    return;
+  }
+  if (!pullOtaClockReady()) {
+    pullOtaFail("Clock failed", "TLS blocked");
+    return;
+  }
+  PullOtaReleaseList catalog;
+  PullOtaReleaseSelection selection;
+  PullOtaManifest rollbackManifest;
+  bool rollbackFound = false;
+  {
+    String body;
+    if (!pullOtaFetchSignedManifest(body)) {
+      pullOtaFail("Signature failed");
+      return;
+    }
+    if (!pullOtaParseManifest(body, catalog)) {
+      pullOtaFail("Manifest invalid");
+      return;
+    }
+  }
+  pullOtaBuildSelectableReleases(catalog, selection);
+  if (selection.count == 0) {
+    if (target.present) {
+      pullOtaFail("Version not offered");
+      return;
+    }
+    pullOtaDraw("Newest stable", pullOtaCurrentVersion().c_str());
+    delay(2000);
+    return;
+  }
+  const String rollbackCombinationHash = pullOtaCurrentCombinationHash();
+  if (rollbackCombinationHash.length() > 0) {
+    rollbackFound = customBuildFetchManifest(rollbackCombinationHash, rollbackManifest);
+  } else {
+    rollbackFound = pullOtaFindCurrentRelease(catalog, rollbackManifest);
+    if (!rollbackFound) rollbackFound = pullOtaFetchCurrentReleaseManifest(rollbackManifest);
+  }
+  if (!rollbackFound) rollbackManifest = PullOtaManifest();
+  uint8_t selectedCatalogIndex = 0;
+  if (target.present) {
+    if (!pullOtaFindTargetRelease(catalog, selection, target, &selectedCatalogIndex)) {
+      pullOtaFail("Version not offered");
+      return;
+    }
+    PullOtaManifest manifest = std::move(catalog.releases[selectedCatalogIndex]);
+    pullOtaInstall(manifest, rollbackManifest, "", rollbackCombinationHash);
+    return;
+  }
+  if (!pullOtaHasNewerRelease(catalog, selection)) {
+    pullOtaDraw("No newer stable", pullOtaCurrentVersion().c_str());
+    delay(1500);
+  }
+  if (!pullOtaPickRelease(catalog, selection, &selectedCatalogIndex)) {
+    return;
+  }
+  PullOtaManifest manifest = std::move(catalog.releases[selectedCatalogIndex]);
+  if (!pullOtaConfirmInstall(manifest)) {
+    return;
+  }
+  pullOtaInstall(manifest, rollbackManifest, "", rollbackCombinationHash);
+}
+
+void pullOtaStoreRequestedTarget(const PullOtaTargetVersion &target) {
+  portENTER_CRITICAL(&wsPendingMux);
+  requestedOtaTargetMajor = target.major;
+  requestedOtaTargetMinor = target.minor;
+  requestedOtaTargetPatch = target.patch;
+  requestedOtaTargetPresent = target.present;
+  portEXIT_CRITICAL(&wsPendingMux);
+}
+
+PullOtaTargetVersion pullOtaLoadRequestedTarget() {
+  PullOtaTargetVersion target;
+  portENTER_CRITICAL(&wsPendingMux);
+  target.major = requestedOtaTargetMajor;
+  target.minor = requestedOtaTargetMinor;
+  target.patch = requestedOtaTargetPatch;
+  target.present = requestedOtaTargetPresent;
+  portEXIT_CRITICAL(&wsPendingMux);
+  return target;
+}
+
+void pullOtaUpdateTask(void *args) {
+  (void)args;
+  const unsigned long pauseStartedAt = millis();
+  while (!otaRuntimeIsPaused() &&
+         millis() - pauseStartedAt < OTA_RUNTIME_PAUSE_TIMEOUT_MS) {
+    delay(1);
+  }
+  if (!otaRuntimeIsPaused()) {
+    pullOtaFail("OTA runtime pause failed");
+    b_ota = false;
+    b_pullOtaRunning = false;
+    wifiReleaseExternalOperation();
+    vTaskDelete(NULL);
+    return;
+  }
+  pullOtaRunUpdate(pullOtaLoadRequestedTarget());
+  portENTER_CRITICAL(&wsPendingMux);
+  const bool restartPending = (wsPendingMask & WSP_OTA_RESET) != 0;
+  portEXIT_CRITICAL(&wsPendingMux);
+  if (!restartPending) {
+    if (filesystemRecoveryActive.load()) pullOtaResumeFilesystemServices();
+    b_ota = false;
+    b_pullOtaRunning = false;
+    wifiReleaseExternalOperation();
+  }
+  vTaskDelete(NULL);
+}
+
+void pullOtaUpdate(const PullOtaTargetVersion &target) {
+  if (b_pullOtaRunning || b_ota) {
+    return;
+  }
+  if (!wifiReserveExternalOperation()) {
+    pullOtaFail("WiFi busy", "Try again later");
+    return;
+  }
+  setOtaRuntimePaused(false);
+  b_pullOtaRunning = true;
+  b_ota = true;
+  pullOtaStoreRequestedTarget(target);
+  BaseType_t started = xTaskCreate(
+      pullOtaUpdateTask,
+      "Pull OTA",
+      HDS_OTA_TASK_STACK_BYTES,
+      NULL,
+      1,
+      NULL);
+  if (started != pdPASS) {
+    b_pullOtaRunning = false;
+    b_ota = false;
+    wifiReleaseExternalOperation();
+    pullOtaFail("OTA task failed");
+  }
+}
+
+#endif
+
+#endif
