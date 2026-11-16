@@ -125,6 +125,7 @@ restores them.
 node --test examples/hds-simulator/tests/state.test.mjs
 node --test examples/hds-simulator/tests/button-input.test.mjs examples/hds-simulator/tests/api-bridge.test.mjs examples/hds-simulator/tests/server-security.mjs
 node examples/hds-simulator/tests/render-parity.mjs /path/to/cache/renderer-native
+node examples/hds-simulator/tests/menu-layout.mjs /path/to/cache/renderer-native /path/to/main/examples/hds-simulator/src/renderer.mjs
 node examples/hds-simulator/tests/browser.mjs
 node examples/hds-simulator/tests/numeric-controls.mjs
 node examples/hds-simulator/tests/framing.mjs
@@ -140,6 +141,9 @@ Screenshots go to `.pio.nosync/hds-simulator-checks/` by default.
 Use the native executable path printed by the build (`.exe` on Windows), or set
 `HDS_NATIVE_RENDERER` and omit the parity command's path argument. Local tool
 paths are not included in the distributable app metadata.
+
+The demo menu check also takes an unchanged `main` checkout's renderer as its
+pixel reference, or `HDS_BASELINE_RENDERER` when the third argument is omitted.
 
 Native/WASM checks compare raw buffers across screens, clocks and rotations.
 Browser checks cover fixed mounting, controls, persistence failures, desktop

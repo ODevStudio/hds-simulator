@@ -1,10 +1,10 @@
 {
-  "sourceCommit": "6f2ac693f7acfc7f476157d36320d7aa67c467fd",
+  "sourceCommit": "f4accff96a12b77a9f908ff5dab80ec136e76bb1",
   "sourceHashes": {
     "include/display.h": "4693ac8ba1f02a23f7f073626c329ee0115951824d2fdf28ec5c286e7fe805a3",
     "include/config.h": "b5e8dcf6f84936b24f03d2b11457bdc3437a7ae1d27d79b7b4a2fdedfcea167c",
     "include/boot_startup.h": "a47fb5381eef6458a2c9d4b5849c61c393d86719811c869a075d8619a397bcbc",
-    "include/menu.h": "705f004487a3c4b1c8e037c9878e752fba19e2893e9f85583fa11759a6246780",
+    "include/menu.h": "0265ec238ae1b11f23076321bee4a81dbd3476f9d7ea7303f73738a413680ce1",
     "include/fuel_gauge_menu.h": "e082aa42d46941419937d226372740e6e8f557266fa236386e94363cdf9336b7",
     "src/hds.ino": "29743132848c41741fa216897e92eb71f939bb4c08681733b8a4dec9009871ba",
     "include/app_prompt_scroll.h": "bac7bfc50a34a9f0592b21eae9004b32697b9c3e3c1dc1092d11a6f778650399",
@@ -12,7 +12,7 @@
     "include/mdns_name.h": "7598218f203594af92d162b8892f862300bd95cdaddbe19218828fb2548b75a7",
     "examples/hds-simulator/renderer/adapter.h": "8facbe4d6691e9314add3f674569c1908827c73b3cbcbf6bd88be40034e1a9b0",
     "examples/hds-simulator/renderer/renderer.cpp": "cf0c479a9e83b9cc0b25f78baa6aed15fb2e279a68568ba2040dd1c31d63cce1",
-    "tools/build_hds_simulator.py": "519de54392fb843a1801dbbf2d151cfba1908688ffd8e815d5836040165de815"
+    "tools/build_hds_simulator.py": "6241fe078b9a293e0ea037158ac1a6591b4bf55e6727e1aea2372a1256af2eac"
   },
   "productionFunctions": {
     "include/display.h": [
@@ -52,7 +52,8 @@
   "emscriptenVersion": "3.1.74",
   "u8g2Version": "2.36.18",
   "simulatorCorrections": [
-    "usb-charging-icon-uses-actual-charging-state"
+    "usb-charging-icon-uses-actual-charging-state",
+    "demo-menu-three-row-button-header"
   ],
   "u8g2SourceHash": "5e9db39d6515eeb7719754368ae684aec8736224cd8c0849a09c486562860254"
 }
