@@ -1,5 +1,5 @@
 import { defaults, driftValues, validateSettings } from "./storage.mjs";
-import { backToMain, driftLabel, infoScreens, isMenu, menuRows, navigateMenu, openMenu, selectedMenuItem } from "./menus.mjs";
+import { backToMain, driftLabel, infoScreens, isMenu, menuRows, menuRowsPerPage, navigateMenu, openMenu, selectedMenuItem } from "./menus.mjs";
 import { consumeHeldButtons, DOUBLE_CLICK_MS, heldButtons, initialButtons, nextButtonDeadline, pressButton, releaseButton, takeDueButtons } from "./buttons.mjs";
 
 export { defaults, readSettings, saveSettings } from "./storage.mjs";
@@ -266,7 +266,8 @@ export function snapshot(state) {
   const rows = menuRows(current);
   return { screen: current.screen, now: current.now, weight: current.grossWeight - current.tareOffset,
     timerMs: current.timerMs, timerRunning: current.timerRunning, settings: { ...current.settings },
-    menu: { ...current.menu, rows, page: Math.floor(current.menu.selected / 4) + 1, totalPages: Math.ceil(rows.length / 4) },
+    menu: { ...current.menu, rows, page: Math.floor(current.menu.selected / menuRowsPerPage) + 1,
+      totalPages: Math.ceil(rows.length / menuRowsPerPage) },
     icons: { ...current.icons }, info: { ...current.info }, held: heldButtons(current), prompt: { ...current.prompt },
     feedback: current.feedback ? { ...current.feedback } : null, tareUntil: current.tareUntil,
     shutdownUntil: current.shutdownUntil, status: current.status,

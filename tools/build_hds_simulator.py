@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 APP = ROOT / "examples/hds-simulator"
 EMSCRIPTEN_VERSION = "3.1.74"
 U8G2_VERSION = "2.36.18"
-SIMULATOR_CORRECTIONS = ("usb-charging-icon-uses-actual-charging-state",)
+SIMULATOR_CORRECTIONS = ("usb-charging-icon-uses-actual-charging-state", "demo-menu-three-row-button-header")
 
 
 def sourceFunction(text, signature):

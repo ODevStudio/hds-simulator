@@ -9,9 +9,11 @@ WebSocket API lets automation operate the same controls and read the state.
 - [Current simulator](https://odevstudio.github.io/hds-simulator/) follows `main`.
 - [Menu demo](https://odevstudio.github.io/hds-simulator/demo/) follows `odev/menu-demo`.
 
-Both run directly in the browser without installing anything. The demo initially
-matches the current simulator; menu-layout experiments can be committed to
-`odev/menu-demo` without changing the current page. Each page saves its own settings.
+Both run directly in the browser without installing anything. The demo reserves
+a 16-pixel header for the same held-button Circle/Square icons as weighing,
+centers the page counter, and places three menu rows below it. It keeps the
+existing font, labels and navigation. Menu-layout experiments on `odev/menu-demo`
+do not change the current page. Each page saves its own settings.
 The local WebSocket API is available only in the standalone packages or local server,
 not on GitHub Pages. There is no Bluetooth connection in either version.
 
@@ -88,6 +90,11 @@ The initial renderer derives from standard V8.1 HDS firmware
 version 3.1.16. Simulator changes were prepared on 2026-11-11. Its metadata
 records the reference source hashes and the explicit USB charging-icon
 correction; firmware reference files were not changed for that correction.
+
+This demo branch deliberately changes the reference menu layout in
+`include/menu.h` for the button header and three-row paging. It is a simulator
+preview, not a hardware-firmware release. Weighing and information pages retain
+the current renderer layout.
 
 Only changing the native OLED renderer requires Python and an activated
 Emscripten 3.1.74 SDK. U8g2 2.36.18 and ArduinoJson 7.4.3 source is vendored:

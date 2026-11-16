@@ -78,6 +78,25 @@ test("default pouring adds three grams per simulated second", () => {
   assert.equal(createState().pourRate, 3);
 });
 
+test("demo menus page three rows without changing navigation or wraparound", () => {
+  for (const id of ["main", "scale", "connections", "display", "power", "info"]) {
+    let state = jump(ready(), id);
+    const rows = menuRows(state);
+    for (let selected = 0; selected < rows.length; selected++) {
+      const frame = snapshot(state);
+      assert.equal(frame.menu.selected, selected, id);
+      assert.equal(frame.menu.page, Math.floor(selected / 3) + 1, `${id}, row ${selected}`);
+      assert.equal(frame.menu.totalPages, Math.ceil(rows.length / 3), id);
+      assert.deepEqual(frame.menu.rows, rows, id);
+      state = tap(state, "circle");
+    }
+    assert.equal(snapshot(state).menu.page, 1, `${id} wraps to first page`);
+    const previous = snapshot(hold(state, "circle"));
+    assert.equal(previous.menu.selected, rows.length - 1, `${id} holds back to last row`);
+    assert.equal(previous.menu.page, Math.ceil(rows.length / 3), `${id} holds back to last page`);
+  }
+});
+
 test("gross weight, tare and pouring use the simulation clock without mutating previous state", () => {
   const base = event(ready(), "setWeight", { value: 250 });
   const copy = structuredClone(base);
@@ -379,7 +398,7 @@ test("standard menu rows and settings defaults match firmware declarations and v
     });
     const frame = snapshot(jump(ready(settings), id));
     assert.deepEqual(frame.menu.rows, rows, id);
-    assert.equal(frame.menu.totalPages, Math.ceil(rows.length / 4), id);
+    assert.equal(frame.menu.totalPages, Math.ceil(rows.length / 3), id);
   }
-  assert.match(source, /const int linesPerPage =\s*4;/);
+  assert.match(source, /const int linesPerPage =\s*3;/);
 });
