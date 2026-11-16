@@ -4,6 +4,23 @@ A photo-backed browser simulator for the Half Decent Scale. The OLED uses the
 firmware's U8g2 fonts, icons and drawing functions through WebAssembly. A local
 WebSocket API lets automation operate the same controls and read the state.
 
+## Browser Versions
+
+- [Current simulator](https://odevstudio.github.io/hds-simulator/) follows `main`.
+- [Menu demo](https://odevstudio.github.io/hds-simulator/demo/) follows `odev/menu-demo`.
+
+Both run directly in the browser without installing anything. The demo initially
+matches the current simulator; menu-layout experiments can be committed to
+`odev/menu-demo` without changing the current page. Each page saves its own settings.
+The local WebSocket API is available only in the standalone packages or local server,
+not on GitHub Pages. There is no Bluetooth connection in either version.
+
+Pushes to either branch redeploy both pages through `.github/workflows/pages.yml`.
+The site contains only the browser app, renderer and legal notices, not the local
+server, dependencies or connection credentials. The renderer stays prebuilt:
+JavaScript/CSS menu changes need no compiler; changes to native drawing code need
+the renderer rebuild described below and updated `dist/` files on that branch.
+
 ## Standalone Downloads
 
 The packages include the renderer, photo, runtime and server dependencies.
@@ -91,6 +108,7 @@ commit. The simulated firmware fixture remains pinned to the version above.
 node --test examples/hds-simulator/tests/state.test.mjs examples/hds-simulator/tests/button-input.test.mjs examples/hds-simulator/tests/api-bridge.test.mjs examples/hds-simulator/tests/server-security.mjs
 node examples/hds-simulator/tests/api.mjs
 node examples/hds-simulator/tests/numeric-controls.mjs
+node examples/hds-simulator/tests/pages.mjs
 ```
 
 Browser checks require Playwright Chromium, and numeric-control checks also

@@ -91,9 +91,10 @@ simulated app before showing a prompt. Show writes accept 1-128 printable ASCII
 characters. Identical writes preserve scroll phase; Circle hold cancels prompts
 for that connection. Disconnect/reconnect starts a new session.
 
-Only simulated settings persist in `hds-simulator.settings.v1`. Restart retains
-them; Reset Defaults replaces only this simulator's settings. Runtime weight,
-timer and connection state are not stored across page reloads.
+Only simulated settings persist in `hds-simulator.settings.v1`, suffixed with the
+page directory when hosted below `/`. Current and demo pages have independent
+settings. Restart retains them; Reset Defaults replaces only this page's settings.
+Runtime weight, timer and connection state are not stored across page reloads.
 
 ## Covered Screens
 

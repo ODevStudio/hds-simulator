@@ -1,4 +1,5 @@
-export const SETTINGS_KEY = "hds-simulator.settings.v1";
+const settingsDirectory = globalThis.location ? new URL('.', globalThis.location.href).pathname : '/';
+export const SETTINGS_KEY = "hds-simulator.settings.v1" + (settingsDirectory === '/' ? '' : `:${settingsDirectory}`);
 export const driftValues = Object.freeze([0, 0.05, 0.075, 0.1, 0.2]);
 
 export const defaults = Object.freeze({
