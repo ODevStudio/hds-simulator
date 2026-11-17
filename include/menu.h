@@ -312,7 +312,7 @@ const Menu *const *currentMenu = mainMenu;
 const Menu *currentSelection = mainMenu[0];
 int currentMenuSize = getMenuSize(mainMenu);
 int currentIndex = 0;
-const int linesPerPage = 3;
+const int linesPerPage = 4;
 int currentPage = 0;
 int totalPages = currentMenuSize / linesPerPage + 1;
 
@@ -1879,16 +1879,19 @@ void showMenu() {
       }
     } else {
       actionMessage == "Default";
-      drawButton();
       currentPage = currentIndex / linesPerPage + 1;
       totalPages = (currentMenuSize + linesPerPage - 1) / linesPerPage;
       char pageInfo[10];
       snprintf(pageInfo, sizeof(pageInfo), "%d/%d", currentPage, totalPages);
       if (totalPages > 1)
-        u8g2.drawStr(AC(pageInfo), u8g2.getMaxCharHeight(),
+        u8g2.drawStr(AR(pageInfo), u8g2.getMaxCharHeight(),
                      pageInfo);
+      if (digitalRead(BUTTON_CIRCLE) == LOW)
+        u8g2.drawXBM(LCDWidth - 15, 16, 15, 16, image_circle);
+      if (digitalRead(BUTTON_SQUARE) == LOW)
+        u8g2.drawXBM(LCDWidth - 14, 32, 14, 16, image_square);
       for (int i = 0; i < currentMenuSize; i++) {
-        const int rowBaseline = 16 + u8g2.getMaxCharHeight() * (i % linesPerPage + 1);
+        const int rowBaseline = u8g2.getMaxCharHeight() * (i % linesPerPage + 1);
         if (currentMenu[i] == currentSelection) {
           u8g2.drawStr(0, rowBaseline,
                        ">");

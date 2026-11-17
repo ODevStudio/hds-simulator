@@ -5,10 +5,11 @@ A local, browser-only simulator of standard V8.1 HDS firmware at `6f2ac69`
 WebAssembly, with a separate deterministic model for buttons, settings and time.
 It is not an ESP32 or electrical-hardware emulator.
 
-On `odev/menu-demo`, standard menu lists have a 16-pixel button header, a
-centered page counter, and three rows per page. Circle and Square indicators
-use the weighing screen's original bitmaps and rotation behavior, appearing
-only while their buttons are held. Labels, font, row spacing, navigation,
+On `odev/menu-demo`, standard menu lists have four rows per page and a right
+column containing the page counter, Circle and Square indicators. The icons
+use the weighing screen's original bitmaps, appearing only while their buttons
+are held. The stack ends above the fourth row so long labels such as
+`WakeOnWeight` retain their full width. Labels, font, row spacing, navigation,
 information pages and action feedback are unchanged.
 
 One simulator-only correction replaces the charging bolt with the actual

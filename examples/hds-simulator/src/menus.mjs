@@ -1,5 +1,5 @@
 export const menuIds = Object.freeze(["main", "scale", "connections", "display", "power", "info"]);
-export const menuRowsPerPage = 3;
+export const menuRowsPerPage = 4;
 export const infoScreens = Object.freeze(["status", "about", "wifiStatus", "batteryInfo", "logo", "logoSample"]);
 
 const toggle = (id, title, setting) => Object.freeze({ id, title, setting, kind: "toggle" });
