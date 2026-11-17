@@ -8,8 +8,9 @@ It is not an ESP32 or electrical-hardware emulator.
 On `odev/menu-demo`, standard menu lists have four rows per page and a right
 column containing the page counter, Circle and Square indicators. The icons
 use the weighing screen's original bitmaps, appearing only while their buttons
-are held. The stack ends above the fourth row so long labels such as
-`WakeOnWeight` retain their full width. Labels, font, row spacing, navigation,
+are held. Circle starts at pixel 24 and Square at pixel 48, leaving equal gaps
+between the visible page counter and icons. The shorter `Weight Wake` label
+fits beside the lower icon. Other labels, font, row spacing, navigation,
 information pages and action feedback are unchanged.
 
 One simulator-only correction replaces the charging bolt with the actual

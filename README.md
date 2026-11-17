@@ -11,7 +11,8 @@ WebSocket API lets automation operate the same controls and read the state.
 
 Both run directly in the browser without installing anything. The demo keeps
 four menu rows, with the page counter, held Circle icon and held Square icon
-stacked on the right. It keeps the existing font, labels and navigation.
+spaced down the right side. `Weight Wake` shortens the longest label to make
+room for that spacing. The font, other labels and navigation are unchanged.
 Menu-layout experiments on `odev/menu-demo` do not change the current page.
 Each page saves its own settings.
 The local WebSocket API is available only in the standalone packages or local server,

@@ -180,7 +180,7 @@ char menuAutoSleepLabel[] = "Auto Sleep o";
 char menuQuickBootLabel[] = "Quick Boot o";
 char menuBatteryProtectLabel[] = "Battery Protect o";
 #ifdef ADS1232ADC
-char menuWakeOnWeightLabel[24] = "WakeOnWeight o";
+char menuWakeOnWeightLabel[24] = "Weight Wake o";
 #endif
 #if HDS_FEATURE_WIFI
 char menuWifiLabel[] = "WiFi o";
@@ -638,7 +638,7 @@ void updateWakeOnWeightLabel() {
                             ? i_wow_interval
                             : 0;
   snprintf(menuWakeOnWeightLabel, sizeof(menuWakeOnWeightLabel),
-           "WakeOnWeight %s", labels[index]);
+           "Weight Wake %s", labels[index]);
 }
 
 void cycleWakeOnWeight() {
@@ -1887,9 +1887,9 @@ void showMenu() {
         u8g2.drawStr(AR(pageInfo), u8g2.getMaxCharHeight(),
                      pageInfo);
       if (digitalRead(BUTTON_CIRCLE) == LOW)
-        u8g2.drawXBM(LCDWidth - 15, 16, 15, 16, image_circle);
+        u8g2.drawXBM(LCDWidth - 15, 24, 15, 16, image_circle);
       if (digitalRead(BUTTON_SQUARE) == LOW)
-        u8g2.drawXBM(LCDWidth - 14, 32, 14, 16, image_square);
+        u8g2.drawXBM(LCDWidth - 14, 48, 14, 16, image_square);
       for (int i = 0; i < currentMenuSize; i++) {
         const int rowBaseline = u8g2.getMaxCharHeight() * (i % linesPerPage + 1);
         if (currentMenu[i] == currentSelection) {

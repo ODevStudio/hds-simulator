@@ -60,7 +60,7 @@ export function menuRows(state) {
     if (item.kind === "toggle") return `${item.title} ${state.settings[item.setting] ? "x" : "o"}`;
     if (item.kind === "drift") return `Drift: ${driftLabel(state.settings.driftCompensation)}`;
     if (item.kind === "timeOnTop") return `Top: ${state.settings.timeOnTop ? "Time" : "Weight"}`;
-    if (item.kind === "wakeOnWeight") return `WakeOnWeight ${["o", "2", "3", "4"][state.settings.wakeOnWeight]}`;
+    if (item.kind === "wakeOnWeight") return `Weight Wake ${["o", "2", "3", "4"][state.settings.wakeOnWeight]}`;
     return item.title;
   });
 }

@@ -26,7 +26,7 @@ test("standard USB reset boots for one second, with firmware defaults and no gau
   assert.equal(frame.controls.pourRate, 3);
   assert.equal(frame.timerMs, 0);
   assert.equal(frame.timerRunning, false);
-  assert.deepEqual(menuRows(jump(state, "power")), ["Back", "Auto Sleep x", "Quick Boot o", "WakeOnWeight o"]);
+  assert.deepEqual(menuRows(jump(state, "power")), ["Back", "Auto Sleep x", "Quick Boot o", "Weight Wake o"]);
   assert.deepEqual(menuRows(jump(state, "display")), ["Back", "Flip Screen o", "Top: Weight", "App Text o", "Show Logo"]);
 });
 
@@ -94,6 +94,14 @@ test("demo menus page four rows without changing navigation or wraparound", () =
     const previous = snapshot(hold(state, "circle"));
     assert.equal(previous.menu.selected, rows.length - 1, `${id} holds back to last row`);
     assert.equal(previous.menu.page, Math.ceil(rows.length / 4), `${id} holds back to last page`);
+  }
+});
+
+test("short Weight Wake labels preserve all saved setting values", () => {
+  for (const [wakeOnWeight, suffix] of ["o", "2", "3", "4"].entries()) {
+    const state = jump(ready({ ...defaults, wakeOnWeight }), "power");
+    assert.equal(menuRows(state)[3], `Weight Wake ${suffix}`);
+    assert.equal(snapshot(state).settings.wakeOnWeight, wakeOnWeight);
   }
 });
 
