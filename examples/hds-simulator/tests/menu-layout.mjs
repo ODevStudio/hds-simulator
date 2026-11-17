@@ -37,7 +37,7 @@ const profiles = [defaults, { ...defaults,
   ...Object.fromEntries(Object.entries(defaults).filter(([, value]) => typeof value === 'boolean').map(([key, value]) => [key, !value])),
   driftCompensation: 0.075, wakeOnWeight: 3,
 }];
-const menuCases = profiles.flatMap((settings, profile) => menuIds.flatMap(id => menuDefinitions[id].flatMap((_, selected) =>
+const menuCases = [...profiles.flatMap((settings, profile) => menuIds.flatMap(id => menuDefinitions[id].flatMap((_, selected) =>
   [true, false].flatMap(screenFlipped => heldCases.map(held => {
     const state = createState({ ...settings, screenFlipped });
     const frame = snapshot({ ...state, now: 2000, screen: id, menu: { id, selected } });
@@ -45,9 +45,17 @@ const menuCases = profiles.flatMap((settings, profile) => menuIds.flatMap(id => 
     assert.equal(frame.menu.totalPages, Math.ceil(frame.menu.rows.length / 4));
     return { label: `${id} row${selected} profile${profile} rotation${screenFlipped} held${JSON.stringify(held)}`,
       snapshot: { ...base, ...frame, held } };
-  })))));
+  }))))), ...[1, 2].flatMap(wakeOnWeight => [true, false].flatMap(screenFlipped => heldCases.map(held => {
+  const state = createState({ ...defaults, wakeOnWeight, screenFlipped });
+  const frame = snapshot({ ...state, now: 2000, screen: 'power', menu: { id: 'power', selected: 3 } });
+  return { label: `power wake${wakeOnWeight} rotation${screenFlipped} held${JSON.stringify(held)}`,
+    snapshot: { ...base, ...frame, held } };
+})))];
+for (const fixture of menuCases.filter(fixture => fixture.snapshot.screen === 'power')) {
+  assert.equal(fixture.snapshot.menu.rows[3], `Weight Wake ${['o', '2', '3', '4'][fixture.snapshot.settings.wakeOnWeight]}`);
+}
 const syntheticCases = [
-  { rows: ['Back', 'Status', 'About', 'WakeOnWeight 4'], selected: 3 },
+  { rows: ['Back', 'Status', 'About', 'Weight Wake 4'], selected: 3 },
   ...[0, 36, 63].map(selected => ({ rows: Array.from({ length: 64 }, (_, index) => `Item ${index + 1}`), selected })),
 ].flatMap(menu => [true, false].flatMap(screenFlipped => heldCases.map(held => ({
   label: `synthetic${menu.rows.length} row${menu.selected} rotation${screenFlipped} held${JSON.stringify(held)}`,
@@ -104,9 +112,9 @@ for (const text of texts) {
   assert.notDeepEqual(textFrame(text), textFrame(`${text}|`), `Full menu label must leave room for a trailing glyph: ${text}`);
 }
 const glyphs = [
-  { name: 'circle', x: 113, y: 16, width: 15, height: 16,
+  { name: 'circle', x: 113, y: 24, width: 15, height: 16,
     pixels: crop(baseline.render({ ...base, held: { circle: true, square: false } }), 113, 0, 15, 16) },
-  { name: 'square', x: 114, y: 32, width: 14, height: 16,
+  { name: 'square', x: 114, y: 48, width: 14, height: 16,
     pixels: crop(baseline.render({ ...base, held: { circle: false, square: true } }), 0, 0, 14, 16) },
 ];
 for (const glyph of glyphs) assert(glyph.pixels.some(Boolean), `Stable weighing provides the ${glyph.name} bitmap`);
@@ -125,8 +133,19 @@ for (const fixture of [...menuCases, ...syntheticCases]) {
       y >= glyph.y && y < glyph.y + glyph.height && glyph.pixels[(y - glyph.y) * glyph.width + x - glyph.x]) ? 1 : 0;
   });
   assert.deepEqual(crop(upright, 0, 0, 128, 16), crop(stable, 0, 0, 128, 16), `Top counter and first row retain the original FONT_S pixels: ${fixture.label}`);
-  assert.deepEqual(crop(upright, 0, 48, 128, 16), crop(stable, 0, 48, 128, 16), `Fourth row keeps its full width and complete labels: ${fixture.label}`);
+  assert.deepEqual(crop(upright, 0, 48, 113, 16), crop(stable, 0, 48, 113, 16), `Fourth row keeps its complete label beside Square: ${fixture.label}`);
   assert.deepEqual(upright, expected, `Four original rows at baselines15/30/45/60 plus the exact stacked weighing bitmaps: ${fixture.label}`);
+  assert(!crop(upright, 113, 15, 15, 9).some(Boolean), `Counter-to-Circle gap stays blank: ${fixture.label}`);
+  assert(!crop(upright, 113, 39, 15, 9).some(Boolean), `Circle-to-Square gap stays blank: ${fixture.label}`);
+  const counterInk = bounds(Uint8Array.from(upright, (value, index) => index < 128 * 16 && index % 128 >= 113 ? value : 0));
+  const iconInk = Object.fromEntries(glyphs.map(glyph => [glyph.name, bounds(Uint8Array.from(upright, (value, index) => {
+    const x = index % 128, y = Math.floor(index / 128);
+    return x >= glyph.x && x < glyph.x + glyph.width && y >= glyph.y && y < glyph.y + glyph.height ? value : 0;
+  }))]));
+  if (counterInk && iconInk.circle && iconInk.square) {
+    assert.deepEqual([iconInk.circle.top - counterInk.top - counterInk.height,
+      iconInk.square.top - iconInk.circle.top - iconInk.circle.height], [9, 9], `Sidebar ink has equal nine-pixel gaps: ${fixture.label}`);
+  }
   checkedMenus++;
 }
 for (const fixture of unchangedCases) {

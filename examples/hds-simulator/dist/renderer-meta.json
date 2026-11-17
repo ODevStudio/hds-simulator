@@ -1,10 +1,10 @@
 {
-  "sourceCommit": "cbda51396cd27089007e30deb301097df2308b6d",
+  "sourceCommit": "c7d039f016f0f656e27cb3b5883b7c80a88f4931",
   "sourceHashes": {
     "include/display.h": "4693ac8ba1f02a23f7f073626c329ee0115951824d2fdf28ec5c286e7fe805a3",
     "include/config.h": "b5e8dcf6f84936b24f03d2b11457bdc3437a7ae1d27d79b7b4a2fdedfcea167c",
     "include/boot_startup.h": "a47fb5381eef6458a2c9d4b5849c61c393d86719811c869a075d8619a397bcbc",
-    "include/menu.h": "bc0606bcac8f9f0b81f2717fa4980e80333a6116120dadd990f7a93f61941b14",
+    "include/menu.h": "edf7d3770bf981af6a264109e83954177a75856d2fb2089a8b21334e97492afc",
     "include/fuel_gauge_menu.h": "e082aa42d46941419937d226372740e6e8f557266fa236386e94363cdf9336b7",
     "src/hds.ino": "29743132848c41741fa216897e92eb71f939bb4c08681733b8a4dec9009871ba",
     "include/app_prompt_scroll.h": "bac7bfc50a34a9f0592b21eae9004b32697b9c3e3c1dc1092d11a6f778650399",
