@@ -22,7 +22,7 @@ const renderer = await createRenderer({ wasmBinary });
 assert.equal(renderer.metadata.sourceCommit, metadata.sourceCommit);
 assert.equal(renderer.metadata.u8g2Version, '2.36.18');
 assert.deepEqual(renderer.metadata.simulatorCorrections, metadata.simulatorCorrections);
-assert.deepEqual(metadata.simulatorCorrections, ['usb-charging-icon-uses-actual-charging-state', 'demo-menu-three-row-button-header']);
+assert.deepEqual(metadata.simulatorCorrections, ['usb-charging-icon-uses-actual-charging-state', 'demo-menu-four-row-button-sidebar']);
 
 const base = {
   screen: 'weighing', now: 2000, weight: 0, timerMs: 0,

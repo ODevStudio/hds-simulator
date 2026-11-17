@@ -15,9 +15,9 @@ const baselineUrl = pathToFileURL(path.resolve(baselinePath));
 const { createRenderer: createBaseline } = await import(baselineUrl.href);
 const baseline = await createBaseline({ wasmBinary: await readFile(new URL('../dist/renderer.wasm', baselineUrl)) });
 const renderer = await createRenderer({ wasmBinary: await readFile(new URL('../dist/renderer.wasm', import.meta.url)) });
-assert.equal(menuRowsPerPage, 3);
-assert(renderer.metadata.simulatorCorrections.includes('demo-menu-three-row-button-header'));
-assert(!baseline.metadata.simulatorCorrections.includes('demo-menu-three-row-button-header'), 'Reference must be the unchanged stable renderer');
+assert.equal(menuRowsPerPage, 4);
+assert(renderer.metadata.simulatorCorrections.includes('demo-menu-four-row-button-sidebar'));
+assert(!baseline.metadata.simulatorCorrections.some(value => value.startsWith('demo-menu-')), 'Reference must be the unchanged stable renderer');
 assert.equal(baseline.metadata.u8g2Version, renderer.metadata.u8g2Version);
 
 const base = {
@@ -41,14 +41,14 @@ const menuCases = profiles.flatMap((settings, profile) => menuIds.flatMap(id => 
   [true, false].flatMap(screenFlipped => heldCases.map(held => {
     const state = createState({ ...settings, screenFlipped });
     const frame = snapshot({ ...state, now: 2000, screen: id, menu: { id, selected } });
-    assert.equal(frame.menu.page, Math.floor(selected / 3) + 1);
-    assert.equal(frame.menu.totalPages, Math.ceil(frame.menu.rows.length / 3));
+    assert.equal(frame.menu.page, Math.floor(selected / 4) + 1);
+    assert.equal(frame.menu.totalPages, Math.ceil(frame.menu.rows.length / 4));
     return { label: `${id} row${selected} profile${profile} rotation${screenFlipped} held${JSON.stringify(held)}`,
       snapshot: { ...base, ...frame, held } };
   })))));
 const syntheticCases = [
-  { rows: ['Back', 'Status', 'About'], selected: 2 },
-  ...[0, 30, 63].map(selected => ({ rows: Array.from({ length: 64 }, (_, index) => `Item ${index + 1}`), selected })),
+  { rows: ['Back', 'Status', 'About', 'WakeOnWeight 4'], selected: 3 },
+  ...[0, 36, 63].map(selected => ({ rows: Array.from({ length: 64 }, (_, index) => `Item ${index + 1}`), selected })),
 ].flatMap(menu => [true, false].flatMap(screenFlipped => heldCases.map(held => ({
   label: `synthetic${menu.rows.length} row${menu.selected} rotation${screenFlipped} held${JSON.stringify(held)}`,
   snapshot: { ...base, screen: 'main', menu, settings: { ...base.settings, screenFlipped }, held },
@@ -95,7 +95,6 @@ function textFrame(text) {
   return Uint8Array.from(frame, (value, index) => index % 128 >= 10 ? value : 0);
 }
 
-const marker = baseline.render({ ...base, screen: 'main', menu: { rows: [''], selected: 0 } });
 const lineSample = baseline.render({ ...base, screen: 'main', menu: { rows: ['H', 'H'], selected: 0 } });
 const lineBody = Uint8Array.from(lineSample, (value, index) => index % 128 >= 10 ? value : 0);
 const fontHeight = bounds(lineBody).height - bounds(textFrame('H')).height;
@@ -104,40 +103,30 @@ const texts = [...new Set([...menuCases, ...syntheticCases].flatMap(fixture => f
 for (const text of texts) {
   assert.notDeepEqual(textFrame(text), textFrame(`${text}|`), `Full menu label must leave room for a trailing glyph: ${text}`);
 }
+const glyphs = [
+  { name: 'circle', x: 113, y: 16, width: 15, height: 16,
+    pixels: crop(baseline.render({ ...base, held: { circle: true, square: false } }), 113, 0, 15, 16) },
+  { name: 'square', x: 114, y: 32, width: 14, height: 16,
+    pixels: crop(baseline.render({ ...base, held: { circle: false, square: true } }), 0, 0, 14, 16) },
+];
+for (const glyph of glyphs) assert(glyph.pixels.some(Boolean), `Stable weighing provides the ${glyph.name} bitmap`);
 let checkedMenus = 0;
 for (const fixture of [...menuCases, ...syntheticCases]) {
   const frame = renderer.render(fixture.snapshot);
   const upright = fixture.snapshot.settings.screenFlipped ? frame : frame.toReversed();
-  const weighingFrame = baseline.render({ ...base, settings: fixture.snapshot.settings, held: fixture.snapshot.held });
-  const weighing = fixture.snapshot.settings.screenFlipped ? weighingFrame : weighingFrame.toReversed();
-  assert.deepEqual(crop(upright, 0, 0, 15, 16), crop(weighing, 0, 0, 15, 16), `Left icon must match stable weighing: ${fixture.label}`);
-  assert.deepEqual(crop(upright, 113, 0, 15, 16), crop(weighing, 113, 0, 15, 16), `Right icon must match stable weighing: ${fixture.label}`);
-  const header = Uint8Array.from(upright, (value, index) => index < 128 * 16 && index % 128 >= 15 && index % 128 < 113 ? value : 0);
-  const actualBounds = bounds(header);
-  const page = Math.floor(fixture.snapshot.menu.selected / 3) + 1;
-  const total = Math.ceil(fixture.snapshot.menu.rows.length / 3);
-  if (total === 1) assert.equal(actualBounds, null, `Single-page header has no counter: ${fixture.label}`);
-  else {
-    const reference = textFrame(`${page}/${total}`);
-    const expectedBounds = bounds(reference);
-    assert(actualBounds, `Page count is visible: ${fixture.label}`);
-    assert.equal(actualBounds.top, expectedBounds.top, `Page count keeps the original FONT_S baseline: ${fixture.label}`);
-    assert(Math.abs(actualBounds.left + (actualBounds.width - 1) / 2 - 63.5) <= 1, `Page count must be centered clear of icons: ${fixture.label}`);
-    assert(actualBounds.left > 15 && actualBounds.left + actualBounds.width < 113, `Page count cannot collide with icons: ${fixture.label}`);
-    assert.deepEqual(crop(header, actualBounds.left, actualBounds.top, actualBounds.width, actualBounds.height),
-      crop(reference, expectedBounds.left, expectedBounds.top, expectedBounds.width, expectedBounds.height), `Page count keeps the original FONT_S glyph pixels: ${fixture.label}`);
+  const stableFrame = baseline.render({ ...fixture.snapshot, held: heldCases[0] });
+  const stable = fixture.snapshot.settings.screenFlipped ? stableFrame : stableFrame.toReversed();
+  for (const glyph of glyphs) {
+    assert(!crop(stable, glyph.x, glyph.y, glyph.width, glyph.height).some(Boolean), `Full labels cannot overlap the ${glyph.name} sidebar region: ${fixture.label}`);
   }
-  const first = (page - 1) * 3;
-  const rows = fixture.snapshot.menu.rows.slice(first, first + 3).map(textFrame);
-  const expectedBody = Uint8Array.from({ length: 128 * 48 }, (_, index) => {
+  const expected = Uint8Array.from(stable, (value, index) => {
     const x = index % 128, y = Math.floor(index / 128);
-    return rows.some((row, offset) => {
-      const sourceY = y - offset * fontHeight;
-      if (sourceY < 0 || sourceY >= 64) return false;
-      return x >= 10 ? row[sourceY * 128 + x] : first + offset === fixture.snapshot.menu.selected && marker[sourceY * 128 + x];
-    }) ? 1 : 0;
+    return value || glyphs.some(glyph => fixture.snapshot.held[glyph.name] && x >= glyph.x && x < glyph.x + glyph.width &&
+      y >= glyph.y && y < glyph.y + glyph.height && glyph.pixels[(y - glyph.y) * glyph.width + x - glyph.x]) ? 1 : 0;
   });
-  assert.deepEqual(crop(upright, 0, 16, 128, 48), Buffer.from(expectedBody), `Rows must retain FONT_S at baselines31/46/61 without header overlap or extra rows: ${fixture.label}`);
+  assert.deepEqual(crop(upright, 0, 0, 128, 16), crop(stable, 0, 0, 128, 16), `Top counter and first row retain the original FONT_S pixels: ${fixture.label}`);
+  assert.deepEqual(crop(upright, 0, 48, 128, 16), crop(stable, 0, 48, 128, 16), `Fourth row keeps its full width and complete labels: ${fixture.label}`);
+  assert.deepEqual(upright, expected, `Four original rows at baselines15/30/45/60 plus the exact stacked weighing bitmaps: ${fixture.label}`);
   checkedMenus++;
 }
 for (const fixture of unchangedCases) {
