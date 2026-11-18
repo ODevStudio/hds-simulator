@@ -126,6 +126,37 @@ async function screens(page, variant, viewport, touch) {
   await screenshot(page, `${label}-scroll.png`);
 }
 
+async function buttonFeedback(page, label, touch) {
+  await press(page, 'reset-defaults', touch);
+  await step(page, 1000);
+  check(await page.locator('#button-feedback').inputValue() === 'icons' && (await current(page)).buttonFeedback === 'icons', `${label} defaults to icon feedback`);
+  await page.locator('#button-feedback').selectOption('lines');
+  check((await current(page)).buttonFeedback === 'lines', `${label} selector enables line feedback`);
+  await press(page, 'restart', touch);
+  check((await current(page)).buttonFeedback === 'lines' && await page.locator('#button-feedback').inputValue() === 'lines', `${label} restart preserves the visible line preference`);
+  await step(page, 1000);
+  for (const screen of ['main', 'weighing']) {
+    await page.locator('#scene').selectOption(screen);
+    const unheld = await pixels(page);
+    await page.locator('#circle').focus();
+    await page.keyboard.down('c');
+    await page.keyboard.down('s');
+    const state = await current(page);
+    check(state.held.circle && state.held.square, `${label} holds both physical controls in ${screen}`);
+    const expected = unheld.map((value, index) => index < 256 && (index % 128 < 16 || index % 128 >= 112) ? 186 : value);
+    assert.deepEqual(await pixels(page), expected, `${label} renders exact corner lines without sidebar icons in ${screen}`);
+    checks++;
+    await screenshot(page, `${label}-${screen}-lines.png`);
+    await page.keyboard.up('s');
+    await page.keyboard.up('c');
+  }
+  await reload(page);
+  check((await current(page)).buttonFeedback === 'icons' && await page.locator('#button-feedback').inputValue() === 'icons', `${label} reload resets the transient preference`);
+  await page.locator('#button-feedback').selectOption('lines');
+  await press(page, 'reset-defaults', touch);
+  check((await current(page)).buttonFeedback === 'icons' && await page.locator('#button-feedback').inputValue() === 'icons', `${label} Reset Defaults restores icons`);
+}
+
 async function isolation(currentPage, demoPage) {
   for (const page of [currentPage, demoPage]) await press(page, 'reset-defaults');
   await currentPage.evaluate(() => localStorage.setItem('hds-pages-unrelated', 'keep'));
@@ -191,6 +222,7 @@ try {
     for (const { page, url, variant } of pages) {
       await navigation(page, url, variant);
       await screens(page, variant, name, touch);
+      await buttonFeedback(page, `${variant}-${name}`, touch);
     }
     if (!touch) await isolation(pages[0].page, pages[1].page);
     await context.close();

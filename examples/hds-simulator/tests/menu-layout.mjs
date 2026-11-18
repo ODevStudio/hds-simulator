@@ -17,6 +17,7 @@ const baseline = await createBaseline({ wasmBinary: await readFile(new URL('../d
 const renderer = await createRenderer({ wasmBinary: await readFile(new URL('../dist/renderer.wasm', import.meta.url)) });
 assert.equal(menuRowsPerPage, 4);
 assert(renderer.metadata.simulatorCorrections.includes('demo-menu-four-row-button-sidebar'));
+assert(renderer.metadata.simulatorCorrections.includes('demo-button-feedback-corner-lines'));
 assert(!baseline.metadata.simulatorCorrections.some(value => value.startsWith('demo-menu-')), 'Reference must be the unchanged stable renderer');
 assert.equal(baseline.metadata.u8g2Version, renderer.metadata.u8g2Version);
 
@@ -74,7 +75,20 @@ const unchangedCases = [
   label: `unchanged ${frame.screen} ${JSON.stringify(frame)} rotation${screenFlipped} held${JSON.stringify(held)}`,
   snapshot: { ...base, ...frame, settings: { ...base.settings, ...frame.settings, screenFlipped }, held },
 }))));
-const cases = [...menuCases, ...syntheticCases, ...unchangedCases];
+const iconCases = [...menuCases, ...syntheticCases, ...unchangedCases];
+const cornerLineCases = [...menuCases, ...syntheticCases, ...unchangedCases.filter(fixture =>
+  fixture.snapshot.screen === 'weighing' && !fixture.snapshot.prompt && !fixture.snapshot.shutdownUntil)].map(fixture => ({
+  ...fixture, label: `lines ${fixture.label}`, snapshot: { ...fixture.snapshot, buttonFeedback: 'lines' },
+}));
+const suppressedLineCases = unchangedCases.filter(fixture => fixture.snapshot.screen !== 'weighing' || fixture.snapshot.prompt || fixture.snapshot.shutdownUntil).map(fixture => ({
+  ...fixture, label: `suppressed lines ${fixture.label}`, snapshot: { ...fixture.snapshot, buttonFeedback: 'lines' },
+}));
+const invalidCases = [...menuCases.slice(0, 8), ...unchangedCases.slice(0, 8)].flatMap(fixture =>
+  [undefined, null, {}, 1, true, 'unknown', 'LINES', 'lines\u0000junk', 'lines\u0000'].flatMap(buttonFeedback => [
+    { ...fixture, label: `prime lines ${fixture.label}`, snapshot: { ...fixture.snapshot, buttonFeedback: 'lines' } },
+    { ...fixture, label: `feedback ${JSON.stringify(buttonFeedback)} after lines ${fixture.label}`, snapshot: { ...fixture.snapshot, buttonFeedback } },
+  ]));
+const cases = [...iconCases, ...cornerLineCases, ...suppressedLineCases, ...invalidCases];
 const nativeResult = spawnSync(native, [], {
   input: cases.map(fixture => JSON.stringify(fixture.snapshot)).join('\n') + '\n',
   maxBuffer: 64 * 1024 * 1024,
@@ -151,4 +165,24 @@ for (const fixture of [...menuCases, ...syntheticCases]) {
 for (const fixture of unchangedCases) {
   assert.deepEqual(renderer.render(fixture.snapshot), baseline.render(fixture.snapshot), `Non-menu frame changed from stable: ${fixture.label}`);
 }
-console.log(`Menu layout passed: ${checkedMenus} menu frames with stable-font/icon references; ${unchangedCases.length} unchanged weighing/info/feedback frames; ${cases.length} native/WASM comparisons`);
+for (const fixture of iconCases) {
+  assert.deepEqual(renderer.render({ ...fixture.snapshot, buttonFeedback: 'icons' }), renderer.render(fixture.snapshot), `Explicit icons must match the unchanged default: ${fixture.label}`);
+}
+for (const fixture of cornerLineCases) {
+  const actual = renderer.render(fixture.snapshot);
+  const upright = fixture.snapshot.settings.screenFlipped ? actual : actual.toReversed();
+  const stableFrame = baseline.render({ ...fixture.snapshot, held: heldCases[0] });
+  const stable = fixture.snapshot.settings.screenFlipped ? stableFrame : stableFrame.toReversed();
+  const expected = Uint8Array.from(stable, (value, index) => value || Math.floor(index / 128) < 2 &&
+    (fixture.snapshot.held.circle && index % 128 < 16 || fixture.snapshot.held.square && index % 128 >= 112) ? 1 : 0);
+  assert.deepEqual(upright, expected, `Lines add only positive sixteen-by-two corner masks without sidebar icons: ${fixture.label}`);
+  assert.deepEqual(crop(upright, 0, 62, 128, 2), crop(stable, 0, 62, 128, 2), `Line feedback preserves the bottom tare pixels: ${fixture.label}`);
+}
+for (const fixture of suppressedLineCases) {
+  assert.deepEqual(renderer.render(fixture.snapshot), baseline.render(fixture.snapshot), `App Text and information/feedback priority suppress line feedback: ${fixture.label}`);
+}
+for (const fixture of invalidCases.filter(fixture => fixture.snapshot.buttonFeedback !== 'lines')) {
+  renderer.render({ ...fixture.snapshot, buttonFeedback: 'lines' });
+  assert.deepEqual(renderer.render(fixture.snapshot), renderer.render({ ...fixture.snapshot, buttonFeedback: 'icons' }), `Invalid native feedback modes restore icons after lines: ${fixture.label}`);
+}
+console.log(`Menu layout passed: ${checkedMenus} menu frames with stable-font/icon references; ${unchangedCases.length} unchanged weighing/info/feedback frames; ${cornerLineCases.length + suppressedLineCases.length} line-mode frames; ${cases.length} native/WASM comparisons`);

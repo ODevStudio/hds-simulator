@@ -1,5 +1,5 @@
 {
-  "sourceCommit": "c7d039f016f0f656e27cb3b5883b7c80a88f4931",
+  "sourceCommit": "12ddaadcf74038a3eb7aae6a56c5392037e51fd7",
   "sourceHashes": {
     "include/display.h": "4693ac8ba1f02a23f7f073626c329ee0115951824d2fdf28ec5c286e7fe805a3",
     "include/config.h": "b5e8dcf6f84936b24f03d2b11457bdc3437a7ae1d27d79b7b4a2fdedfcea167c",
@@ -11,8 +11,8 @@
     "include/energy_runtime_policy.h": "ae27107cbe831eac009c2ec4cd186c9f604b231e8102f15bf3e337e67b3bea0b",
     "include/mdns_name.h": "7598218f203594af92d162b8892f862300bd95cdaddbe19218828fb2548b75a7",
     "examples/hds-simulator/renderer/adapter.h": "8facbe4d6691e9314add3f674569c1908827c73b3cbcbf6bd88be40034e1a9b0",
-    "examples/hds-simulator/renderer/renderer.cpp": "cf0c479a9e83b9cc0b25f78baa6aed15fb2e279a68568ba2040dd1c31d63cce1",
-    "tools/build_hds_simulator.py": "fe930fad01ba3f1390957ee3c0905a72c41e98e7e6ce7df21f27161f9830e72a"
+    "examples/hds-simulator/renderer/renderer.cpp": "c0683d7336b53140c0c61e4cbb38ffdb7f20517ec1c244fc1d02c49e00cc9038",
+    "tools/build_hds_simulator.py": "979e8065df96bf08a34596be842de0a743dc40ea189c17d131148714a5f7ba94"
   },
   "productionFunctions": {
     "include/display.h": [
@@ -53,7 +53,8 @@
   "u8g2Version": "2.36.18",
   "simulatorCorrections": [
     "usb-charging-icon-uses-actual-charging-state",
-    "demo-menu-four-row-button-sidebar"
+    "demo-menu-four-row-button-sidebar",
+    "demo-button-feedback-corner-lines"
   ],
   "u8g2SourceHash": "5e9db39d6515eeb7719754368ae684aec8736224cd8c0849a09c486562860254"
 }
