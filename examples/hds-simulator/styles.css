@@ -87,6 +87,7 @@ textarea { width: 100%; resize: vertical; min-height: 70px; max-height: 150px; f
 .prompt-actions .icon-button { width: 32px; height: 32px; }
 .prompt-actions .text-button { height: 32px; }
 .session-section { border-bottom: 0; }
+#button-feedback { height: 34px; padding: 0 8px; font-size: 12px; }
 .session-section .wide-button + .wide-button { margin-top: 8px; }
 .quiet { color: #758481; border-color: transparent; background: transparent; }
 .simulator { min-width: 0; display: flex; flex-direction: column; background: #fff; }

@@ -29,6 +29,7 @@ export function bindControls({ send, setPlaying, isPlaying, advanceTime, buttons
   for (const [id, [type, field]] of Object.entries(switches)) byId(id).addEventListener('change', event => send({ type, [field]: event.target.checked }));
   byId('battery').addEventListener('input', event => send({ type: 'setBattery', percent: Number(event.target.value) }));
   byId('scene').addEventListener('change', event => send({ type: 'jump', screen: event.target.value }));
+  byId('button-feedback').addEventListener('change', event => send({ type: 'setButtonFeedback', value: event.target.value }));
   byId('show-prompt').addEventListener('click', () => send({ type: 'setPrompt', text: byId('prompt').value }));
   byId('prompt').addEventListener('input', event => { byId('prompt-length').textContent = `${event.target.value.length} / 128`; });
   byId('play-pause').addEventListener('click', () => setPlaying(!isPlaying()));

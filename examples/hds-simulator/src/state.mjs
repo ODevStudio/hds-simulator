@@ -13,7 +13,7 @@ const boundedWeight = (value) => Math.max(-10000, Math.min(10000, value));
 export function createState(settings = defaults) {
   const saved = validateSettings(settings);
   return {
-    now: 0, screen: "boot", transition: { at: 1000, kind: "boot" }, setupBoot: false,
+    now: 0, screen: "boot", transition: { at: 1000, kind: "boot" }, setupBoot: false, buttonFeedback: "icons",
     settings: saved, menu: { id: "main", selected: 0 }, buttons: initialButtons(), chordAt: null,
     grossWeight: 0, tareOffset: 0, pourRate: 3, pouring: false, timerMs: 0, timerRunning: false,
     icons: { bleEnabled: true, bleConnected: false, wifiEnabled: saved.wifiOnBoot, wifiConnected: false,
@@ -41,7 +41,8 @@ function feedback(state, text, text2 = "", duration = 1000) {
 
 function restart(state, setup = false, settings = state.settings) {
   const fresh = createState(settings);
-  return { ...fresh, now: state.now, setupBoot: setup, transition: { at: state.now + 1000, kind: "boot" },
+  return { ...fresh, now: state.now, setupBoot: setup, buttonFeedback: state.buttonFeedback,
+    transition: { at: state.now + 1000, kind: "boot" },
     grossWeight: state.grossWeight, pourRate: state.pourRate, icons: { ...fresh.icons,
       usbPresent: state.icons.usbPresent, charging: state.icons.charging, batteryPercent: state.icons.batteryPercent },
     info: { ...fresh.info, batteryVoltage: state.info.batteryVoltage }, lastActivityAt: state.now };
@@ -169,6 +170,7 @@ function setWifi(state, event) {
 
 function control(state, event) {
   switch (event.type) {
+    case "setButtonFeedback": return ["icons", "lines"].includes(event.value) ? { ...state, buttonFeedback: event.value } : state;
     case "setWeight": return validNumber(event.value) && Math.abs(event.value) <= 10000 ?
       { ...state, grossWeight: event.value, lastActivityAt: state.now } : state;
     case "setPourRate": return validNumber(event.value) && event.value >= 0 && event.value <= 1000 ? { ...state, pourRate: event.value } : state;
@@ -191,7 +193,7 @@ function control(state, event) {
     case "setPrompt": return setPrompt(state, event.text);
     case "clearPrompt": return { ...state, prompt: emptyPrompt(state.prompt.session, state.prompt.cancelled, state.prompt.generation + 1), status: "" };
     case "restart": return restart(state, event.setup === true);
-    case "resetDefaults": return restart(state, false, defaults);
+    case "resetDefaults": return { ...restart(state, false, defaults), buttonFeedback: "icons" };
     case "jump": {
       const next = { ...state, buttons: initialButtons(), chordAt: null, transition: null, lastActivityAt: state.now };
       return event.screen === "boot" ? restart(state) : isMenu(event.screen) ? openMenu(next, event.screen) :
@@ -264,7 +266,8 @@ export function advance(state, ms) {
 export function snapshot(state) {
   const current = settle(state);
   const rows = menuRows(current);
-  return { screen: current.screen, now: current.now, weight: current.grossWeight - current.tareOffset,
+  return { screen: current.screen, now: current.now, buttonFeedback: current.buttonFeedback,
+    weight: current.grossWeight - current.tareOffset,
     timerMs: current.timerMs, timerRunning: current.timerRunning, settings: { ...current.settings },
     menu: { ...current.menu, rows, page: Math.floor(current.menu.selected / menuRowsPerPage) + 1,
       totalPages: Math.ceil(rows.length / menuRowsPerPage) },

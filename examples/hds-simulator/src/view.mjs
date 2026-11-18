@@ -46,6 +46,7 @@ export function presentPixels(pixels) {
 
 export function presentState(state) {
   const icons = state.icons;
+  element('button-feedback').value = state.buttonFeedback;
   element('sim-time').value = timecode(state.now);
   element('net-weight').value = `${state.weight.toFixed(1)} g`;
   inputValue('weight', state.controls.grossWeight.toFixed(1));

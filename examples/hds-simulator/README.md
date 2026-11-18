@@ -13,6 +13,14 @@ between the visible page counter and icons. The shorter `Weight Wake` label
 fits beside the lower icon. Other labels, font, row spacing, navigation,
 information pages and action feedback are unchanged.
 
+The Session control `Button feedback` switches between the existing Icons and
+Corner lines. Lines are 16 by 2 pixels at the logical top-left for Circle and
+top-right for Square. They replace existing pressed-button bitmaps in menus
+and weighing, without changing when button feedback is visible. App Text and
+priority-screen suppression stay unchanged, and the bottom tare line is
+unaffected. This is a transient demo preference, not a firmware setting:
+simulated restart preserves it, while reload and Reset Defaults select Icons.
+
 One simulator-only correction replaces the charging bolt with the actual
 battery-level icon when USB is present but charging is inactive. It uses the
 firmware's battery buckets, blink timing and bitmap assets wherever a charging

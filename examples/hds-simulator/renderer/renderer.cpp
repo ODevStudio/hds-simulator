@@ -14,6 +14,7 @@ unsigned long simNow = 0;
 String simVersion, simDate, simRevision, simDeviceName, simSsid, simIp, simWifiMode;
 bool simBleConnected = false, simCircle = false, simSquare = false, simUsb = false;
 bool simCharging = false, simWifiConnected = false, simWifiCredentials = false;
+bool simButtonLines = false;
 int simBatteryPercent = 75;
 unsigned long simTimerSeconds = 0;
 bool b_negativeWeight = false, b_timeOnTop = false, b_screenFlipped = false;
@@ -81,6 +82,13 @@ struct {
 #include "production.inc"
 
 void NativeDisplay::drawXBM(int x, int y, int width, int height, const uint8_t *bitmap) {
+  if (simButtonLines && (bitmap == image_circle || bitmap == image_square)) {
+    const uint8_t drawColor = u8g2_GetDrawColor(&display);
+    setDrawColor(1);
+    drawBox(bitmap == image_circle ? 0 : LCDWidth - 16, 0, 16, 2);
+    setDrawColor(drawColor);
+    return;
+  }
   if (bitmap == image_battery_charging && !(simUsb && simCharging)) {
     const int bucket = EnergyRuntimePolicy::batteryDisplayBucket(simBatteryPercent);
     if (bucket == 0 && !((simNow / 500) & 1)) return;
@@ -138,6 +146,9 @@ void configureSnapshot() {
   simBatteryPercent = std::clamp(icons["batteryPercent"] | 75, 0, 100);
   simCircle = root["held"]["circle"] | false;
   simSquare = root["held"]["square"] | false;
+  simButtonLines = root["buttonFeedback"].is<const char *>() &&
+    root["buttonFeedback"].as<JsonString>().size() == 5 &&
+    std::strcmp(root["buttonFeedback"].as<const char *>(), "lines") == 0;
   simVersion = readText(info["firmwareVersion"], "FW: 3.1.16");
   simDate = readText(info["buildDate"], "Nov 09 2026");
   simRevision = readText(info["revision"], HDS_SIM_COMMIT_SHORT);

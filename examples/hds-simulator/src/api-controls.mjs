@@ -1,7 +1,7 @@
 const fieldTypes = Object.freeze({
   weight: 'number', 'pour-rate': 'number', 'ble-enabled': 'boolean', 'ble-connected': 'boolean',
   'wifi-enabled': 'boolean', 'wifi-connected': 'boolean', battery: 'number',
-  'usb-present': 'boolean', charging: 'boolean', prompt: 'string', scene: 'enum',
+  'usb-present': 'boolean', charging: 'boolean', prompt: 'string', scene: 'enum', 'button-feedback': 'enum',
 });
 const buttonIds = Object.freeze(['tare', 'pour', 'setup-boot', 'reset-defaults', 'clear-prompt',
   'show-prompt', 'play-pause', 'step', 'restart', 'view-detail', 'view-full', 'clean-view',

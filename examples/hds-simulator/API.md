@@ -55,8 +55,9 @@ Omit `instanceId` on a routed method only when exactly one page is connected.
 No page returns error `-32001`; multiple pages return `-32002`. Each loaded
 page gets a new ID. Enumerate again after reloads.
 
-`snapshot` includes the screen, virtual time, gross/net weight, pouring,
-timer, menu rows/selection, icons, settings, held buttons, prompt, and feedback.
+`snapshot` includes the screen, demo `buttonFeedback` mode, virtual time,
+gross/net weight, pouring, timer, menu rows/selection, icons, settings,
+held buttons, prompt, and feedback.
 `ui` includes `playing`, `view` (`detail` or `full`), `clean`, and `fields`/
 `buttons` keyed by their IDs. Fields expose `{value, enabled}`; physical
 buttons also expose `held`. The prompt field is a draft; `snapshot.prompt`
@@ -94,6 +95,10 @@ Field IDs:
 - `prompt`: a draft of 0-128 printable ASCII characters.
 - `scene`: `boot`, `weighing`, `main`, `scale`, `connections`, `display`,
   `power`, or `info`.
+- `button-feedback`: `icons` or `lines`, matching the demo's Session selector.
+  Read it through `state.get` or `controls.describe`. It survives simulated
+  restart but resets to `icons` on reload or Reset Defaults. This presentation
+  preference is not included in firmware-style `settings.get`.
 
 Button IDs:
 
