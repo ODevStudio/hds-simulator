@@ -143,7 +143,7 @@ async function buttonFeedback(page, label, touch) {
     await page.keyboard.down('s');
     const state = await current(page);
     check(state.held.circle && state.held.square, `${label} holds both physical controls in ${screen}`);
-    const expected = unheld.map((value, index) => index < 256 && (index % 128 < 16 || index % 128 >= 112) ? 186 : value);
+    const expected = unheld.map((value, index) => index < 256 && (index % 128 < 32 || index % 128 >= 96) ? 186 : value);
     assert.deepEqual(await pixels(page), expected, `${label} renders exact corner lines without sidebar icons in ${screen}`);
     checks++;
     await screenshot(page, `${label}-${screen}-lines.png`);

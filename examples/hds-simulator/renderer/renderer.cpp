@@ -85,7 +85,7 @@ void NativeDisplay::drawXBM(int x, int y, int width, int height, const uint8_t *
   if (simButtonLines && (bitmap == image_circle || bitmap == image_square)) {
     const uint8_t drawColor = u8g2_GetDrawColor(&display);
     setDrawColor(1);
-    drawBox(bitmap == image_circle ? 0 : LCDWidth - 16, 0, 16, 2);
+    drawBox(bitmap == image_circle ? 0 : LCDWidth - 32, 0, 32, 2);
     setDrawColor(drawColor);
     return;
   }

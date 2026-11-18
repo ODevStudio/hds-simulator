@@ -174,8 +174,8 @@ for (const fixture of cornerLineCases) {
   const stableFrame = baseline.render({ ...fixture.snapshot, held: heldCases[0] });
   const stable = fixture.snapshot.settings.screenFlipped ? stableFrame : stableFrame.toReversed();
   const expected = Uint8Array.from(stable, (value, index) => value || Math.floor(index / 128) < 2 &&
-    (fixture.snapshot.held.circle && index % 128 < 16 || fixture.snapshot.held.square && index % 128 >= 112) ? 1 : 0);
-  assert.deepEqual(upright, expected, `Lines add only positive sixteen-by-two corner masks without sidebar icons: ${fixture.label}`);
+    (fixture.snapshot.held.circle && index % 128 < 32 || fixture.snapshot.held.square && index % 128 >= 96) ? 1 : 0);
+  assert.deepEqual(upright, expected, `Lines add only positive thirty-two-by-two corner masks without sidebar icons: ${fixture.label}`);
   assert.deepEqual(crop(upright, 0, 62, 128, 2), crop(stable, 0, 62, 128, 2), `Line feedback preserves the bottom tare pixels: ${fixture.label}`);
 }
 for (const fixture of suppressedLineCases) {
