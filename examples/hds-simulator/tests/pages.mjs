@@ -130,31 +130,46 @@ async function buttonFeedback(page, label, touch) {
   await press(page, 'reset-defaults', touch);
   await step(page, 1000);
   check(await page.locator('#button-feedback').inputValue() === 'icons' && (await current(page)).buttonFeedback === 'icons', `${label} defaults to icon feedback`);
-  await page.locator('#button-feedback').selectOption('lines');
-  check((await current(page)).buttonFeedback === 'lines', `${label} selector enables line feedback`);
-  await press(page, 'restart', touch);
-  check((await current(page)).buttonFeedback === 'lines' && await page.locator('#button-feedback').inputValue() === 'lines', `${label} restart preserves the visible line preference`);
-  await step(page, 1000);
-  for (const screen of ['main', 'weighing']) {
-    await page.locator('#scene').selectOption(screen);
-    const unheld = await pixels(page);
-    await page.locator('#circle').focus();
-    await page.keyboard.down('c');
-    await page.keyboard.down('s');
-    const state = await current(page);
-    check(state.held.circle && state.held.square, `${label} holds both physical controls in ${screen}`);
-    const expected = unheld.map((value, index) => index < 256 && (index % 128 < 32 || index % 128 >= 96) ? 186 : value);
-    assert.deepEqual(await pixels(page), expected, `${label} renders exact corner lines without sidebar icons in ${screen}`);
-    checks++;
-    await screenshot(page, `${label}-${screen}-lines.png`);
-    await page.keyboard.up('s');
-    await page.keyboard.up('c');
+  check(await page.locator('#button-feedback option[value="xor"]').textContent() === 'XOR corner icons', `${label} names the alternate corner-icon option`);
+  await page.locator('#scene').selectOption('weighing');
+  const iconBackground = await pixels(page);
+  await page.locator('#circle').focus();
+  await page.keyboard.down('c');
+  await page.keyboard.down('s');
+  const iconPixels = await pixels(page);
+  const iconMask = iconPixels.map((value, index) => value !== iconBackground[index]);
+  check(iconMask.some(Boolean) && iconMask.every((value, index) => !value || index < 2048 && (index % 128 < 15 || index % 128 >= 114)), `${label} captures original weighing corner bitmaps`);
+  await page.keyboard.up('s');
+  await page.keyboard.up('c');
+  for (const mode of ['lines', 'xor']) {
+    await page.locator('#button-feedback').selectOption(mode);
+    check((await current(page)).buttonFeedback === mode, `${label} selector enables ${mode} feedback`);
+    await press(page, 'restart', touch);
+    check((await current(page)).buttonFeedback === mode && await page.locator('#button-feedback').inputValue() === mode, `${label} restart preserves the visible ${mode} preference`);
+    await step(page, 1000);
+    for (const screen of ['main', 'weighing']) {
+      await page.locator('#scene').selectOption(screen);
+      const unheld = await pixels(page);
+      await page.locator('#circle').focus();
+      await page.keyboard.down('c');
+      await page.keyboard.down('s');
+      const state = await current(page);
+      check(state.held.circle && state.held.square, `${label} holds both physical controls in ${screen}`);
+      const expected = unheld.map((value, index) => mode === 'lines' ?
+        index < 256 && (index % 128 < 32 || index % 128 >= 96) ? 186 : value :
+        iconMask[index] ? value === 186 ? 40 : 186 : value);
+      assert.deepEqual(await pixels(page), expected, `${label} renders exact ${mode} pixels in ${screen}`);
+      checks++;
+      await screenshot(page, `${label}-${screen}-${mode}.png`);
+      await page.keyboard.up('s');
+      await page.keyboard.up('c');
+    }
+    await reload(page);
+    check((await current(page)).buttonFeedback === 'icons' && await page.locator('#button-feedback').inputValue() === 'icons', `${label} reload resets the transient ${mode} preference`);
+    await page.locator('#button-feedback').selectOption(mode);
+    await press(page, 'reset-defaults', touch);
+    check((await current(page)).buttonFeedback === 'icons' && await page.locator('#button-feedback').inputValue() === 'icons', `${label} Reset Defaults restores icons from ${mode}`);
   }
-  await reload(page);
-  check((await current(page)).buttonFeedback === 'icons' && await page.locator('#button-feedback').inputValue() === 'icons', `${label} reload resets the transient preference`);
-  await page.locator('#button-feedback').selectOption('lines');
-  await press(page, 'reset-defaults', touch);
-  check((await current(page)).buttonFeedback === 'icons' && await page.locator('#button-feedback').inputValue() === 'icons', `${label} Reset Defaults restores icons`);
 }
 
 async function isolation(currentPage, demoPage) {

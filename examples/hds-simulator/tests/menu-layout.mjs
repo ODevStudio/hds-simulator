@@ -18,6 +18,7 @@ const renderer = await createRenderer({ wasmBinary: await readFile(new URL('../d
 assert.equal(menuRowsPerPage, 4);
 assert(renderer.metadata.simulatorCorrections.includes('demo-menu-four-row-button-sidebar'));
 assert(renderer.metadata.simulatorCorrections.includes('demo-button-feedback-corner-lines'));
+assert(renderer.metadata.simulatorCorrections.includes('demo-menu-xor-corner-icons'));
 assert(!baseline.metadata.simulatorCorrections.some(value => value.startsWith('demo-menu-')), 'Reference must be the unchanged stable renderer');
 assert.equal(baseline.metadata.u8g2Version, renderer.metadata.u8g2Version);
 
@@ -83,12 +84,27 @@ const cornerLineCases = [...menuCases, ...syntheticCases, ...unchangedCases.filt
 const suppressedLineCases = unchangedCases.filter(fixture => fixture.snapshot.screen !== 'weighing' || fixture.snapshot.prompt || fixture.snapshot.shutdownUntil).map(fixture => ({
   ...fixture, label: `suppressed lines ${fixture.label}`, snapshot: { ...fixture.snapshot, buttonFeedback: 'lines' },
 }));
+const xorMenuCases = [...menuCases, ...syntheticCases, ...unchangedCases.filter(fixture => fixture.snapshot.feedback)].map(fixture => ({
+  ...fixture, label: `xor ${fixture.label}`, snapshot: { ...fixture.snapshot, buttonFeedback: 'xor' },
+}));
+const xorUnchangedCases = unchangedCases.filter(fixture => !fixture.snapshot.feedback).map(fixture => ({
+  ...fixture, label: `unchanged xor ${fixture.label}`, snapshot: { ...fixture.snapshot, buttonFeedback: 'xor' },
+}));
 const invalidCases = [...menuCases.slice(0, 8), ...unchangedCases.slice(0, 8)].flatMap(fixture =>
-  [undefined, null, {}, 1, true, 'unknown', 'LINES', 'lines\u0000junk', 'lines\u0000'].flatMap(buttonFeedback => [
-    { ...fixture, label: `prime lines ${fixture.label}`, snapshot: { ...fixture.snapshot, buttonFeedback: 'lines' } },
-    { ...fixture, label: `feedback ${JSON.stringify(buttonFeedback)} after lines ${fixture.label}`, snapshot: { ...fixture.snapshot, buttonFeedback } },
-  ]));
-const cases = [...iconCases, ...cornerLineCases, ...suppressedLineCases, ...invalidCases];
+  [undefined, null, {}, 1, true, 'unknown', 'LINES', 'XOR', 'lines\u0000junk', 'lines\u0000', 'xor\u0000junk', 'xor\u0000'].flatMap(buttonFeedback =>
+    ['lines', 'xor'].flatMap(primeMode => [
+      { ...fixture, label: `prime ${primeMode} ${fixture.label}`, snapshot: { ...fixture.snapshot, buttonFeedback: primeMode } },
+      { ...fixture, primeMode, label: `feedback ${JSON.stringify(buttonFeedback)} after ${primeMode} ${fixture.label}`, snapshot: { ...fixture.snapshot, buttonFeedback } },
+    ])));
+const restorationCases = menuCases.slice(0, 8).flatMap(fixture => [
+  { kind: 'weighing', snapshot: { ...base, weight: -999.9, timerMs: 123000, settings: { ...fixture.snapshot.settings, timeOnTop: false }, held: fixture.snapshot.held, buttonFeedback: 'icons' } },
+  { kind: 'icons', snapshot: { ...fixture.snapshot, buttonFeedback: 'icons' } },
+  { kind: 'lines', snapshot: { ...fixture.snapshot, buttonFeedback: 'lines' } },
+].flatMap(target => [
+  { label: `prime menu XOR before ${target.kind} ${fixture.label}`, snapshot: { ...fixture.snapshot, buttonFeedback: 'xor' } },
+  { ...target, label: `restore ${target.kind} after menu XOR ${fixture.label}`, primeSnapshot: { ...fixture.snapshot, buttonFeedback: 'xor' } },
+]));
+const cases = [...iconCases, ...cornerLineCases, ...suppressedLineCases, ...xorMenuCases, ...xorUnchangedCases, ...invalidCases, ...restorationCases];
 const nativeResult = spawnSync(native, [], {
   input: cases.map(fixture => JSON.stringify(fixture.snapshot)).join('\n') + '\n',
   maxBuffer: 64 * 1024 * 1024,
@@ -181,8 +197,63 @@ for (const fixture of cornerLineCases) {
 for (const fixture of suppressedLineCases) {
   assert.deepEqual(renderer.render(fixture.snapshot), baseline.render(fixture.snapshot), `App Text and information/feedback priority suppress line feedback: ${fixture.label}`);
 }
-for (const fixture of invalidCases.filter(fixture => fixture.snapshot.buttonFeedback !== 'lines')) {
-  renderer.render({ ...fixture.snapshot, buttonFeedback: 'lines' });
-  assert.deepEqual(renderer.render(fixture.snapshot), renderer.render({ ...fixture.snapshot, buttonFeedback: 'icons' }), `Invalid native feedback modes restore icons after lines: ${fixture.label}`);
+let selectionTextKept = 0;
+let pageTextKept = 0;
+let textInverted = 0;
+for (const fixture of xorMenuCases) {
+  const actual = renderer.render(fixture.snapshot);
+  const flipped = fixture.snapshot.settings.screenFlipped;
+  const upright = flipped ? actual : actual.toReversed();
+  const stableFrame = baseline.render({ ...fixture.snapshot, held: heldCases[0] });
+  const stable = flipped ? stableFrame : stableFrame.toReversed();
+  const corners = glyphs.map(glyph => ({ ...glyph, y: 0,
+    x: glyph.name === 'circle' ? flipped ? 113 : 0 : flipped ? 0 : 114,
+  }));
+  const activeCorner = index => corners.find(glyph => fixture.snapshot.held[glyph.name] && index % 128 >= glyph.x &&
+    index % 128 < glyph.x + glyph.width && Math.floor(index / 128) < glyph.height);
+  const bitmapAt = index => {
+    const glyph = activeCorner(index);
+    return glyph ? glyph.pixels[Math.floor(index / 128) * glyph.width + index % 128 - glyph.x] : 0;
+  };
+  const expected = Uint8Array.from(stable, (value, index) => value ^ bitmapAt(index));
+  assert.deepEqual(upright, expected, `Menu and action feedback XOR only bitmap set bits at original button corners: ${fixture.label}`);
+  const keptText = (left, right) => stable.some((value, index) => value && index % 128 >= left && index % 128 < right && activeCorner(index) && !bitmapAt(index));
+  if (keptText(0, 10)) selectionTextKept++;
+  if (keptText(105, 128)) pageTextKept++;
+  if (stable.some((value, index) => value && bitmapAt(index))) textInverted++;
 }
-console.log(`Menu layout passed: ${checkedMenus} menu frames with stable-font/icon references; ${unchangedCases.length} unchanged weighing/info/feedback frames; ${cornerLineCases.length + suppressedLineCases.length} line-mode frames; ${cases.length} native/WASM comparisons`);
+assert(selectionTextKept > 0, 'XOR fixtures preserve selection text beneath transparent bitmap zeroes');
+assert(pageTextKept > 0, 'XOR fixtures preserve page-count text beneath transparent bitmap zeroes');
+assert(textInverted > 0, 'XOR fixtures invert overlapping text beneath bitmap set bits');
+for (const fixture of xorUnchangedCases) {
+  assert.deepEqual(renderer.render(fixture.snapshot), baseline.render(fixture.snapshot), `XOR mode leaves weighing, tare and information screens unchanged: ${fixture.label}`);
+}
+let opaqueWeighingFrames = 0;
+for (const fixture of restorationCases.filter(fixture => fixture.primeSnapshot)) {
+  const stableFrame = baseline.render({ ...fixture.snapshot, held: fixture.kind === 'weighing' ? fixture.snapshot.held : heldCases[0] });
+  const stable = fixture.snapshot.settings.screenFlipped ? stableFrame : stableFrame.toReversed();
+  if (fixture.kind === 'weighing') {
+    const unheldFrame = baseline.render({ ...fixture.snapshot, held: heldCases[0] });
+    const unheld = fixture.snapshot.settings.screenFlipped ? unheldFrame : unheldFrame.toReversed();
+    const corners = glyphs.map(glyph => ({ ...glyph, y: 0,
+      x: glyph.name === 'circle' ? fixture.snapshot.settings.screenFlipped ? 113 : 0 : fixture.snapshot.settings.screenFlipped ? 0 : 114,
+    }));
+    if (unheld.some((value, index) => value && !stable[index] && corners.some(glyph => fixture.snapshot.held[glyph.name] && index % 128 >= glyph.x &&
+      index % 128 < glyph.x + glyph.width && Math.floor(index / 128) < glyph.height && !glyph.pixels[Math.floor(index / 128) * glyph.width + index % 128 - glyph.x]))) opaqueWeighingFrames++;
+  }
+  const expected = fixture.kind === 'weighing' ? stable : Uint8Array.from(stable, (value, index) => {
+    const x = index % 128, y = Math.floor(index / 128);
+    const indicator = fixture.kind === 'lines' ? y < 2 && (fixture.snapshot.held.circle && x < 32 || fixture.snapshot.held.square && x >= 96) :
+      glyphs.some(glyph => fixture.snapshot.held[glyph.name] && x >= glyph.x && x < glyph.x + glyph.width && y >= glyph.y && y < glyph.y + glyph.height && glyph.pixels[(y - glyph.y) * glyph.width + x - glyph.x]);
+    return value || indicator ? 1 : 0;
+  });
+  renderer.render(fixture.primeSnapshot);
+  const actual = renderer.render(fixture.snapshot);
+  assert.deepEqual(fixture.snapshot.settings.screenFlipped ? actual : actual.toReversed(), expected, `Menu XOR restores graphics state before subsequent frames: ${fixture.label}`);
+}
+assert(opaqueWeighingFrames > 0, 'Restoration fixtures require bitmap mode zero to clear lit weighing text under bitmap zeroes');
+for (const fixture of invalidCases.filter(fixture => fixture.primeMode)) {
+  renderer.render({ ...fixture.snapshot, buttonFeedback: fixture.primeMode });
+  assert.deepEqual(renderer.render(fixture.snapshot), renderer.render({ ...fixture.snapshot, buttonFeedback: 'icons' }), `Invalid native feedback modes restore icons after ${fixture.primeMode}: ${fixture.label}`);
+}
+console.log(`Menu layout passed: ${checkedMenus} menu frames with stable-font/icon references; ${unchangedCases.length} unchanged weighing/info/feedback frames; ${cornerLineCases.length + suppressedLineCases.length} line-mode frames; ${xorMenuCases.length + xorUnchangedCases.length} XOR frames; ${cases.length} native/WASM comparisons`);

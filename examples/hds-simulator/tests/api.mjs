@@ -142,7 +142,7 @@ try {
   checks++;
   check(described.clock.stepMs === 100 && described.clock.maxAdvanceMs === 86400000, 'Clock limits are discoverable');
   const feedbackControl = described.fields.find(control => control.id === 'button-feedback');
-  assert.deepEqual(feedbackControl.options, ['icons', 'lines']);
+  assert.deepEqual(feedbackControl.options, ['icons', 'lines', 'xor']);
   check(feedbackControl.type === 'enum' && feedbackControl.enabled && feedbackControl.value === 'icons' && (await current()).snapshot.buttonFeedback === 'icons', 'Button feedback is discoverable with icons as the default');
   check(described.fields.find(control => control.id === 'pour-rate').value === 3 && (await current()).snapshot.controls.pourRate === 3, 'Default pour rate is 3 g/s');
   for (const id of ['weight-step-up', 'weight-step-down', 'pour-rate-step-up', 'pour-rate-step-down']) {
@@ -191,24 +191,26 @@ try {
   await field('weight', 0);
   const settings = await call('settings.get');
   check(settings.autoSleep && !settings.appTextEnabled, 'Settings API reads current firmware defaults');
-  const linePreference = await field('button-feedback', 'lines');
-  check(linePreference.snapshot.buttonFeedback === 'lines' && linePreference.ui.fields['button-feedback'].value === 'lines', 'API selects and reads line feedback');
-  assert.deepEqual(await call('settings.get'), settings, 'Button feedback does not change persisted firmware settings');
-  checks++;
-  check((await field('button-feedback', 'icons')).snapshot.buttonFeedback === 'icons', 'API can restore icon feedback');
-  await field('button-feedback', 'lines');
-  await page.locator('#button-feedback').focus();
-  const resetPreference = await press('reset-defaults');
-  check(resetPreference.snapshot.buttonFeedback === 'icons' && resetPreference.ui.fields['button-feedback'].value === 'icons' &&
-    await page.locator('#button-feedback').inputValue() === 'icons' && await page.evaluate(() => document.activeElement.id) === 'button-feedback', 'API reset updates the still-focused preference selector');
-  await page.locator('#button-feedback').selectOption('lines');
-  check((await current()).snapshot.buttonFeedback === 'lines', 'Visible selector updates API readback');
-  check((await press('restart')).snapshot.buttonFeedback === 'lines', 'Normal restart preserves line feedback');
-  await step(1000);
-  check((await press('setup-boot')).snapshot.buttonFeedback === 'lines', 'Setup restart preserves line feedback');
-  await step(2000);
-  await press('reset-defaults');
-  await step(1000);
+  for (const mode of ['lines', 'xor']) {
+    const preference = await field('button-feedback', mode);
+    check(preference.snapshot.buttonFeedback === mode && preference.ui.fields['button-feedback'].value === mode, `API selects and reads ${mode} feedback`);
+    assert.deepEqual(await call('settings.get'), settings, 'Button feedback does not change persisted firmware settings');
+    checks++;
+    check((await field('button-feedback', 'icons')).snapshot.buttonFeedback === 'icons', 'API can restore icon feedback');
+    await field('button-feedback', mode);
+    await page.locator('#button-feedback').focus();
+    const resetPreference = await press('reset-defaults');
+    check(resetPreference.snapshot.buttonFeedback === 'icons' && resetPreference.ui.fields['button-feedback'].value === 'icons' &&
+      await page.locator('#button-feedback').inputValue() === 'icons' && await page.evaluate(() => document.activeElement.id) === 'button-feedback', `API reset updates the still-focused ${mode} selector`);
+    await page.locator('#button-feedback').selectOption(mode);
+    check((await current()).snapshot.buttonFeedback === mode, 'Visible selector updates API readback');
+    check((await press('restart')).snapshot.buttonFeedback === mode, `Normal restart preserves ${mode} feedback`);
+    await step(1000);
+    check((await press('setup-boot')).snapshot.buttonFeedback === mode, `Setup restart preserves ${mode} feedback`);
+    await step(2000);
+    await press('reset-defaults');
+    await step(1000);
+  }
   check(!(await first.call('state.get')).ui.playing, 'A single browser can be addressed without instanceId');
   const litPixels = await page.locator('#oled').evaluate(canvas => {
     const data = canvas.getContext('2d').getImageData(0, 0, 128, 64).data;
@@ -286,6 +288,7 @@ try {
     ['field.set', { id: 'weight', value: 0.15 }], ['field.set', { id: 'pour-rate', value: 1.5 }],
     ['field.set', { id: 'button-feedback', value: 'unknown' }], ['field.set', { id: 'button-feedback', value: true }],
     ['field.set', { id: 'button-feedback', value: 'lines\u0000junk' }], ['field.set', { id: 'button-feedback', value: null }],
+    ['field.set', { id: 'button-feedback', value: 'xor\u0000junk' }], ['field.set', { id: 'button-feedback', value: 'XOR' }],
     ['field.set', { id: 'weight', value: 1, extra: true }], ['field.set', { id: 'pour-rate', value: -1 }],
     ['field.set', { id: 'battery', value: 1.5 }], ['field.set', { id: 'scene', value: 'unknown' }],
     ['field.set', { id: 'prompt', value: 'A'.repeat(129) }], ['field.set', { id: 'prompt', value: 'caf\u00e9' }],

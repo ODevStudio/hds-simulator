@@ -1,18 +1,18 @@
 {
-  "sourceCommit": "2cfea49bd10e52852302504c85b949cce18dd1b0",
+  "sourceCommit": "ccbb5a8e74f9b6f50f193473019773df202e5d99",
   "sourceHashes": {
     "include/display.h": "4693ac8ba1f02a23f7f073626c329ee0115951824d2fdf28ec5c286e7fe805a3",
     "include/config.h": "b5e8dcf6f84936b24f03d2b11457bdc3437a7ae1d27d79b7b4a2fdedfcea167c",
     "include/boot_startup.h": "a47fb5381eef6458a2c9d4b5849c61c393d86719811c869a075d8619a397bcbc",
-    "include/menu.h": "edf7d3770bf981af6a264109e83954177a75856d2fb2089a8b21334e97492afc",
+    "include/menu.h": "fcdd0e5a46232833c7f6fbda8e731d97dfd23ca009afbbc4118544e32935359d",
     "include/fuel_gauge_menu.h": "e082aa42d46941419937d226372740e6e8f557266fa236386e94363cdf9336b7",
     "src/hds.ino": "29743132848c41741fa216897e92eb71f939bb4c08681733b8a4dec9009871ba",
     "include/app_prompt_scroll.h": "bac7bfc50a34a9f0592b21eae9004b32697b9c3e3c1dc1092d11a6f778650399",
     "include/energy_runtime_policy.h": "ae27107cbe831eac009c2ec4cd186c9f604b231e8102f15bf3e337e67b3bea0b",
     "include/mdns_name.h": "7598218f203594af92d162b8892f862300bd95cdaddbe19218828fb2548b75a7",
-    "examples/hds-simulator/renderer/adapter.h": "8facbe4d6691e9314add3f674569c1908827c73b3cbcbf6bd88be40034e1a9b0",
-    "examples/hds-simulator/renderer/renderer.cpp": "4245ce081d27504730e082d0f185489d242ea2ebf46cf4cadd3bf1e505df537d",
-    "tools/build_hds_simulator.py": "979e8065df96bf08a34596be842de0a743dc40ea189c17d131148714a5f7ba94"
+    "examples/hds-simulator/renderer/adapter.h": "2dfaf549e5ffc01efd04d3766e21fceef37d8c780fa6382be7dcf1cea3f9f97f",
+    "examples/hds-simulator/renderer/renderer.cpp": "e65d3a3416c6fd304f7bad215de684526b9cd7ac3919788aca92fde45b3fec4c",
+    "tools/build_hds_simulator.py": "7b7b704876e5405a2a3eb5675879d88b525558089b6b168be41860e67983c679"
   },
   "productionFunctions": {
     "include/display.h": [
@@ -42,6 +42,7 @@
       "void showStatus()",
       "void showAbout()",
       "void showLogo()",
+      "void drawMenuButtonIndicators()",
       "void showMenu()"
     ],
     "include/fuel_gauge_menu.h": [
@@ -54,7 +55,8 @@
   "simulatorCorrections": [
     "usb-charging-icon-uses-actual-charging-state",
     "demo-menu-four-row-button-sidebar",
-    "demo-button-feedback-corner-lines"
+    "demo-button-feedback-corner-lines",
+    "demo-menu-xor-corner-icons"
   ],
   "u8g2SourceHash": "5e9db39d6515eeb7719754368ae684aec8736224cd8c0849a09c486562860254"
 }
