@@ -95,7 +95,7 @@ Field IDs:
 - `prompt`: a draft of 0-128 printable ASCII characters.
 - `scene`: `boot`, `weighing`, `main`, `scale`, `connections`, `display`,
   `power`, or `info`.
-- `button-feedback`: `icons` or `lines`, matching the demo's Session selector.
+- `button-feedback`: `icons`, `lines`, or `xor`, matching the demo's Session selector.
   Read it through `state.get` or `controls.describe`. It survives simulated
   restart but resets to `icons` on reload or Reset Defaults. This presentation
   preference is not included in firmware-style `settings.get`.

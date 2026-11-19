@@ -170,7 +170,7 @@ function setWifi(state, event) {
 
 function control(state, event) {
   switch (event.type) {
-    case "setButtonFeedback": return ["icons", "lines"].includes(event.value) ? { ...state, buttonFeedback: event.value } : state;
+    case "setButtonFeedback": return ["icons", "lines", "xor"].includes(event.value) ? { ...state, buttonFeedback: event.value } : state;
     case "setWeight": return validNumber(event.value) && Math.abs(event.value) <= 10000 ?
       { ...state, grossWeight: event.value, lastActivityAt: state.now } : state;
     case "setPourRate": return validNumber(event.value) && event.value >= 0 && event.value <= 1000 ? { ...state, pourRate: event.value } : state;

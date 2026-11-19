@@ -107,22 +107,24 @@ test("short Weight Wake labels preserve all saved setting values", () => {
 
 test("button feedback is a validated demo preference, not a firmware setting", () => {
   const initial = ready();
-  const lines = event(initial, "setButtonFeedback", { value: "lines" });
   assert.equal(snapshot(initial).buttonFeedback, "icons");
-  assert.equal(snapshot(lines).buttonFeedback, "lines");
-  assert.deepEqual(lines.settings, initial.settings);
-  for (const value of [undefined, null, true, 1, "invalid", "LINES", {}]) {
-    assert.deepEqual(snapshot(event(lines, "setButtonFeedback", { value })), snapshot(lines));
+  for (const mode of ["lines", "xor"]) {
+    const selected = event(initial, "setButtonFeedback", { value: mode });
+    assert.equal(snapshot(selected).buttonFeedback, mode);
+    assert.deepEqual(selected.settings, initial.settings);
+    for (const value of [undefined, null, true, 1, "invalid", "LINES", "XOR", "xor\u0000junk", {}]) {
+      assert.deepEqual(snapshot(event(selected, "setButtonFeedback", { value })), snapshot(selected));
+    }
+    const held = event(selected, "buttonDown", { name: "circle" });
+    const switched = snapshot(event(held, "setButtonFeedback", { value: "icons" }));
+    assert.equal(switched.buttonFeedback, "icons");
+    assert.equal(switched.held.circle, true);
+    assert.equal(snapshot(event(selected, "restart")).buttonFeedback, mode);
+    assert.equal(snapshot(event(selected, "restart", { setup: true })).buttonFeedback, mode);
+    assert.equal(snapshot(jump(selected, "main")).buttonFeedback, mode);
+    assert.equal(snapshot(event(selected, "resetDefaults")).buttonFeedback, "icons");
+    assert.equal(snapshot(createState(selected.settings)).buttonFeedback, "icons");
   }
-  const held = event(lines, "buttonDown", { name: "circle" });
-  const switched = snapshot(event(held, "setButtonFeedback", { value: "icons" }));
-  assert.equal(switched.buttonFeedback, "icons");
-  assert.equal(switched.held.circle, true);
-  assert.equal(snapshot(event(lines, "restart")).buttonFeedback, "lines");
-  assert.equal(snapshot(event(lines, "restart", { setup: true })).buttonFeedback, "lines");
-  assert.equal(snapshot(jump(lines, "main")).buttonFeedback, "lines");
-  assert.equal(snapshot(event(lines, "resetDefaults")).buttonFeedback, "icons");
-  assert.equal(snapshot(createState(lines.settings)).buttonFeedback, "icons");
 });
 
 test("gross weight, tare and pouring use the simulation clock without mutating previous state", () => {

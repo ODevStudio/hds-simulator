@@ -1849,6 +1849,14 @@ bool renderMenuInfoPage() {
   return true;
 }
 
+void drawMenuButtonIndicators() {
+  u8g2.setDrawColor(2);
+  u8g2.setBitmapMode(1);
+  drawButton();
+  u8g2.setDrawColor(1);
+  u8g2.setBitmapMode(0);
+}
+
 void showMenu() {
   processMenuInfoPageExit();
   if (renderMenuInfoPage()) return;
@@ -1886,10 +1894,6 @@ void showMenu() {
       if (totalPages > 1)
         u8g2.drawStr(AR(pageInfo), u8g2.getMaxCharHeight(),
                      pageInfo);
-      if (digitalRead(BUTTON_CIRCLE) == LOW)
-        u8g2.drawXBM(LCDWidth - 15, 24, 15, 16, image_circle);
-      if (digitalRead(BUTTON_SQUARE) == LOW)
-        u8g2.drawXBM(LCDWidth - 14, 48, 14, 16, image_square);
       for (int i = 0; i < currentMenuSize; i++) {
         const int rowBaseline = u8g2.getMaxCharHeight() * (i % linesPerPage + 1);
         if (currentMenu[i] == currentSelection) {
@@ -1901,6 +1905,7 @@ void showMenu() {
                        currentMenu[i]->name);
       }
     }
+    drawMenuButtonIndicators();
   } while (u8g2.nextPage());
   lastMenuFrameRender = now;
   menuFrameShowsActionMessage = actionMessageVisible;

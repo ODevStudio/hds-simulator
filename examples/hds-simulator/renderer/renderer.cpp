@@ -14,7 +14,7 @@ unsigned long simNow = 0;
 String simVersion, simDate, simRevision, simDeviceName, simSsid, simIp, simWifiMode;
 bool simBleConnected = false, simCircle = false, simSquare = false, simUsb = false;
 bool simCharging = false, simWifiConnected = false, simWifiCredentials = false;
-bool simButtonLines = false;
+bool simButtonLines = false, simMenuXor = false, simMenuFrame = false;
 int simBatteryPercent = 75;
 unsigned long simTimerSeconds = 0;
 bool b_negativeWeight = false, b_timeOnTop = false, b_screenFlipped = false;
@@ -82,7 +82,18 @@ struct {
 #include "production.inc"
 
 void NativeDisplay::drawXBM(int x, int y, int width, int height, const uint8_t *bitmap) {
-  if (simButtonLines && (bitmap == image_circle || bitmap == image_square)) {
+  const bool buttonBitmap = bitmap == image_circle || bitmap == image_square;
+  if (simMenuFrame && buttonBitmap && !simMenuXor) {
+    if (t_actionMessageDelay > 0) return;
+    if (!simButtonLines) {
+      const uint8_t drawColor = u8g2_GetDrawColor(&display);
+      setDrawColor(1);
+      u8g2_DrawXBM(&display, LCDWidth - width, bitmap == image_circle ? 24 : 48, width, height, bitmap);
+      setDrawColor(drawColor);
+      return;
+    }
+  }
+  if (simButtonLines && buttonBitmap) {
     const uint8_t drawColor = u8g2_GetDrawColor(&display);
     setDrawColor(1);
     drawBox(bitmap == image_circle ? 0 : LCDWidth - 32, 0, 32, 2);
@@ -149,6 +160,9 @@ void configureSnapshot() {
   simButtonLines = root["buttonFeedback"].is<const char *>() &&
     root["buttonFeedback"].as<JsonString>().size() == 5 &&
     std::strcmp(root["buttonFeedback"].as<const char *>(), "lines") == 0;
+  simMenuXor = root["buttonFeedback"].is<const char *>() &&
+    root["buttonFeedback"].as<JsonString>().size() == 3 &&
+    std::strcmp(root["buttonFeedback"].as<const char *>(), "xor") == 0;
   simVersion = readText(info["firmwareVersion"], "FW: 3.1.16");
   simDate = readText(info["buildDate"], "Nov 09 2026");
   simRevision = readText(info["revision"], HDS_SIM_COMMIT_SHORT);
@@ -213,6 +227,12 @@ void drawWeighing() {
   } while (u8g2.nextPage());
 }
 
+void drawMenuFrame() {
+  simMenuFrame = true;
+  showMenu();
+  simMenuFrame = false;
+}
+
 extern "C" const uint8_t *hdsRender(const char *json) {
   static bool initialized = false;
   static uint8_t output[128 * 64];
@@ -232,7 +252,7 @@ extern "C" const uint8_t *hdsRender(const char *json) {
   u8g2_SetFontMode(&u8g2.display, 1);
   u8g2.setDrawColor(1);
   const String screen = readText(input["screen"], "weighing");
-  if (t_actionMessageDelay > 0) showMenu();
+  if (t_actionMessageDelay > 0) drawMenuFrame();
   else if (screen == "boot" || screen == "logo") {
     b_showNumber = false;
     renderBootLogo();
@@ -250,7 +270,7 @@ extern "C" const uint8_t *hdsRender(const char *json) {
     t_oled_refresh = static_cast<uint32_t>(simNow - 1000UL);
     chargingOLED(simBatteryPercent, f_batteryVoltage);
   } else if (screen == "weighing") drawWeighing();
-  else showMenu();
+  else drawMenuFrame();
   const auto buffer = u8g2_GetBufferPtr(&u8g2.display);
   for (int y = 0; y < 64; ++y) {
     for (int x = 0; x < 128; ++x) output[y * 128 + x] = (buffer[x + (y / 8) * 128] >> (y % 8)) & 1;

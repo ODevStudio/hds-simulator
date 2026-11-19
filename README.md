@@ -13,10 +13,13 @@ Both run directly in the browser without installing anything. The demo keeps
 four menu rows, with the page counter, held Circle icon and held Square icon
 spaced down the right side. `Weight Wake` shortens the longest label to make
 room for that spacing. The font, other labels and navigation are unchanged.
-In the demo's Session controls, `Button feedback` selects `Icons` or
-`Corner lines`. Lines replace held-button icons with short marks at the top-left
-for Circle and top-right for Square, leaving the text area clear. The choice
-survives simulated restarts; reloading or Reset Defaults returns to Icons.
+In the demo's Session controls, `Button feedback` selects `Icons`,
+`Corner lines`, or `XOR corner icons`. Lines replace held-button icons with
+short marks at the top-left for Circle and top-right for Square, leaving the
+text area clear. Selection survives simulated restarts; reloading or Reset
+Defaults returns to Icons. The XOR choice demonstrates the proposed menu
+helper: transparent bitmaps invert the pixels beneath them at the weighing screen's rotation-aware corner
+positions, after menu content is drawn. Weighing keeps its original icons.
 Menu-layout experiments on `odev/menu-demo` do not change the current page.
 Each page saves its own settings.
 The local WebSocket API is available only in the standalone packages or local server,

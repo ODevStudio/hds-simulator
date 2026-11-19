@@ -21,6 +21,14 @@ priority-screen suppression stay unchanged, and the bottom tare line is
 unaffected. This is a transient demo preference, not a firmware setting:
 simulated restart preserves it, while reload and Reset Defaults select Icons.
 
+The third choice, XOR corner icons, uses `drawMenuButtonIndicators()` from
+`include/menu.h` after menu content inside the existing U8g2 page loop. It wraps
+the firmware's rotation-aware `drawButton()` with draw color 2 and transparent
+bitmap mode 1, then restores color 1 and bitmap mode 0. Bitmap set bits invert
+the underlying content; zero bits leave it untouched. This proposal applies
+to menu rows and menu action feedback. Weighing, tare, information pages and
+the two existing feedback choices remain unchanged.
+
 One simulator-only correction replaces the charging bolt with the actual
 battery-level icon when USB is present but charging is inactive. It uses the
 firmware's battery buckets, blink timing and bitmap assets wherever a charging

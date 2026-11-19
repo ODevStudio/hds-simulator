@@ -24,6 +24,7 @@ struct NativeDisplay {
   u8g2_t display;
   void setFont(const uint8_t *font) { u8g2_SetFont(&display, font); }
   void setDrawColor(uint8_t color) { u8g2_SetDrawColor(&display, color); }
+  void setBitmapMode(uint8_t mode) { u8g2_SetBitmapMode(&display, mode); }
   void setDisplayRotation(const u8g2_cb_t *rotation) { u8g2_SetDisplayRotation(&display, rotation); }
   int getDisplayWidth() { return u8g2_GetDisplayWidth(&display); }
   int getDisplayHeight() { return u8g2_GetDisplayHeight(&display); }
