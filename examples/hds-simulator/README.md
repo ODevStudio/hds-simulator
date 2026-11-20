@@ -14,11 +14,13 @@ fits beside the lower icon. Other labels, font, row spacing, navigation,
 information pages and action feedback are unchanged.
 
 The Session control `Button feedback` switches between the existing Icons and
-Corner lines. Lines are 32 by 2 pixels at the logical top-left for Circle and
-top-right for Square. They replace existing pressed-button bitmaps in menus
-and weighing, without changing when button feedback is visible. App Text and
-priority-screen suppression stay unchanged, and the bottom tare line is
-unaffected. This is a transient demo preference, not a firmware setting:
+Side lines. Lines are 12 by 64 pixels at logical columns 0-11 for Circle and
+115-126 for Square, matching the supplied GIF. The rightmost column remains
+untouched. XOR drawing inverts overlapping text instead of covering it.
+They replace existing pressed-button bitmaps in menus and weighing, appearing
+only while held and disappearing on release. App Text and priority-screen
+suppression stay unchanged, and the bottom tare indicator is not modified.
+This is a transient demo preference, not a firmware setting:
 simulated restart preserves it, while reload and Reset Defaults select Icons.
 
 The third choice, XOR corner icons, uses `drawMenuButtonIndicators()` from

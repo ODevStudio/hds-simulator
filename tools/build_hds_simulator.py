@@ -16,7 +16,7 @@ U8G2_VERSION = "2.36.18"
 SIMULATOR_CORRECTIONS = (
     "usb-charging-icon-uses-actual-charging-state",
     "demo-menu-four-row-button-sidebar",
-    "demo-button-feedback-corner-lines",
+    "demo-button-feedback-side-lines",
     "demo-menu-xor-corner-icons",
 )
 

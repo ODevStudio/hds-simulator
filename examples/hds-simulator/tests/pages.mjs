@@ -130,6 +130,7 @@ async function buttonFeedback(page, label, touch) {
   await press(page, 'reset-defaults', touch);
   await step(page, 1000);
   check(await page.locator('#button-feedback').inputValue() === 'icons' && (await current(page)).buttonFeedback === 'icons', `${label} defaults to icon feedback`);
+  check(await page.locator('#button-feedback option[value="lines"]').textContent() === 'Side lines', `${label} names the full-height side-line option`);
   check(await page.locator('#button-feedback option[value="xor"]').textContent() === 'XOR corner icons', `${label} names the alternate corner-icon option`);
   await page.locator('#scene').selectOption('weighing');
   const iconBackground = await pixels(page);
@@ -156,13 +157,20 @@ async function buttonFeedback(page, label, touch) {
       const state = await current(page);
       check(state.held.circle && state.held.square, `${label} holds both physical controls in ${screen}`);
       const expected = unheld.map((value, index) => mode === 'lines' ?
-        index < 256 && (index % 128 < 32 || index % 128 >= 96) ? 186 : value :
+        index % 128 < 12 || index % 128 >= 115 && index % 128 < 127 ? value === 186 ? 40 : 186 : value :
         iconMask[index] ? value === 186 ? 40 : 186 : value);
       assert.deepEqual(await pixels(page), expected, `${label} renders exact ${mode} pixels in ${screen}`);
       checks++;
       await screenshot(page, `${label}-${screen}-${mode}.png`);
       await page.keyboard.up('s');
       await page.keyboard.up('c');
+      const released = await pixels(page);
+      const releasedState = await current(page);
+      check(!releasedState.held.circle && !releasedState.held.square, `${label} releases both physical controls in ${screen}`);
+      await page.locator('#button-feedback').selectOption('icons');
+      assert.deepEqual(await pixels(page), released, `${label} release restores the unheld icon-mode pixels from ${mode}`);
+      checks++;
+      await page.locator('#button-feedback').selectOption(mode);
     }
     await reload(page);
     check((await current(page)).buttonFeedback === 'icons' && await page.locator('#button-feedback').inputValue() === 'icons', `${label} reload resets the transient ${mode} preference`);

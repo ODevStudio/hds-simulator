@@ -95,8 +95,8 @@ void NativeDisplay::drawXBM(int x, int y, int width, int height, const uint8_t *
   }
   if (simButtonLines && buttonBitmap) {
     const uint8_t drawColor = u8g2_GetDrawColor(&display);
-    setDrawColor(1);
-    drawBox(bitmap == image_circle ? 0 : LCDWidth - 32, 0, 32, 2);
+    setDrawColor(2);
+    drawBox(bitmap == image_circle ? 0 : LCDWidth - 13, 0, 12, LCDHeight);
     setDrawColor(drawColor);
     return;
   }
@@ -219,10 +219,11 @@ void drawWeighing() {
     }
     u8g2.setDrawColor(2);
     drawBattery(simNow);
-    if (!showPrompt) drawButton();
+    if (!showPrompt && !simButtonLines) drawButton();
     drawBle(simNow);
     drawHeartBeat();
     drawTare();
+    if (!showPrompt && simButtonLines) drawButton();
     drawShutdownFail();
   } while (u8g2.nextPage());
 }

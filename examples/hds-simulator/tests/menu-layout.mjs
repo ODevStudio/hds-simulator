@@ -17,7 +17,7 @@ const baseline = await createBaseline({ wasmBinary: await readFile(new URL('../d
 const renderer = await createRenderer({ wasmBinary: await readFile(new URL('../dist/renderer.wasm', import.meta.url)) });
 assert.equal(menuRowsPerPage, 4);
 assert(renderer.metadata.simulatorCorrections.includes('demo-menu-four-row-button-sidebar'));
-assert(renderer.metadata.simulatorCorrections.includes('demo-button-feedback-corner-lines'));
+assert(renderer.metadata.simulatorCorrections.includes('demo-button-feedback-side-lines'));
 assert(renderer.metadata.simulatorCorrections.includes('demo-menu-xor-corner-icons'));
 assert(!baseline.metadata.simulatorCorrections.some(value => value.startsWith('demo-menu-')), 'Reference must be the unchanged stable renderer');
 assert.equal(baseline.metadata.u8g2Version, renderer.metadata.u8g2Version);
@@ -81,6 +81,9 @@ const cornerLineCases = [...menuCases, ...syntheticCases, ...unchangedCases.filt
   fixture.snapshot.screen === 'weighing' && !fixture.snapshot.prompt && !fixture.snapshot.shutdownUntil)].map(fixture => ({
   ...fixture, label: `lines ${fixture.label}`, snapshot: { ...fixture.snapshot, buttonFeedback: 'lines' },
 }));
+const lineReleaseCases = cornerLineCases.map(fixture => ({
+  ...fixture, label: `released ${fixture.label}`, snapshot: { ...fixture.snapshot, held: heldCases[0] },
+}));
 const suppressedLineCases = unchangedCases.filter(fixture => fixture.snapshot.screen !== 'weighing' || fixture.snapshot.prompt || fixture.snapshot.shutdownUntil).map(fixture => ({
   ...fixture, label: `suppressed lines ${fixture.label}`, snapshot: { ...fixture.snapshot, buttonFeedback: 'lines' },
 }));
@@ -104,7 +107,7 @@ const restorationCases = menuCases.slice(0, 8).flatMap(fixture => [
   { label: `prime menu XOR before ${target.kind} ${fixture.label}`, snapshot: { ...fixture.snapshot, buttonFeedback: 'xor' } },
   { ...target, label: `restore ${target.kind} after menu XOR ${fixture.label}`, primeSnapshot: { ...fixture.snapshot, buttonFeedback: 'xor' } },
 ]));
-const cases = [...iconCases, ...cornerLineCases, ...suppressedLineCases, ...xorMenuCases, ...xorUnchangedCases, ...invalidCases, ...restorationCases];
+const cases = [...iconCases, ...cornerLineCases.flatMap((fixture, index) => [fixture, lineReleaseCases[index]]), ...suppressedLineCases, ...xorMenuCases, ...xorUnchangedCases, ...invalidCases, ...restorationCases];
 const nativeResult = spawnSync(native, [], {
   input: cases.map(fixture => JSON.stringify(fixture.snapshot)).join('\n') + '\n',
   maxBuffer: 64 * 1024 * 1024,
@@ -184,16 +187,23 @@ for (const fixture of unchangedCases) {
 for (const fixture of iconCases) {
   assert.deepEqual(renderer.render({ ...fixture.snapshot, buttonFeedback: 'icons' }), renderer.render(fixture.snapshot), `Explicit icons must match the unchanged default: ${fixture.label}`);
 }
+let lineTextInverted = 0;
 for (const fixture of cornerLineCases) {
   const actual = renderer.render(fixture.snapshot);
   const upright = fixture.snapshot.settings.screenFlipped ? actual : actual.toReversed();
   const stableFrame = baseline.render({ ...fixture.snapshot, held: heldCases[0] });
   const stable = fixture.snapshot.settings.screenFlipped ? stableFrame : stableFrame.toReversed();
-  const expected = Uint8Array.from(stable, (value, index) => value || Math.floor(index / 128) < 2 &&
-    (fixture.snapshot.held.circle && index % 128 < 32 || fixture.snapshot.held.square && index % 128 >= 96) ? 1 : 0);
-  assert.deepEqual(upright, expected, `Lines add only positive thirty-two-by-two corner masks without sidebar icons: ${fixture.label}`);
-  assert.deepEqual(crop(upright, 0, 62, 128, 2), crop(stable, 0, 62, 128, 2), `Line feedback preserves the bottom tare pixels: ${fixture.label}`);
+  const lineAt = index => fixture.snapshot.held.circle && index % 128 < 12 ||
+    fixture.snapshot.held.square && index % 128 >= 115 && index % 128 < 127;
+  const expected = Uint8Array.from(stable, (value, index) => value ^ Number(lineAt(index)));
+  assert.deepEqual(upright, expected, `Side lines XOR only the full-height twelve-pixel edge masks: ${fixture.label}`);
+  if (fixture.snapshot.screen !== 'weighing' && stable.some((value, index) => value && lineAt(index) && !upright[index])) lineTextInverted++;
+  assert.deepEqual(crop(upright, 12, 62, 103, 2), crop(stable, 12, 62, 103, 2), `Side lines preserve bottom pixels outside their strips, including tare: ${fixture.label}`);
+  assert.deepEqual(crop(upright, 127, 0, 1, 64), crop(stable, 127, 0, 1, 64), `Side lines retain the one-column right margin: ${fixture.label}`);
+  const released = renderer.render({ ...fixture.snapshot, held: heldCases[0] });
+  assert.deepEqual(fixture.snapshot.settings.screenFlipped ? released : released.toReversed(), stable, `Side-line release restores the entire unheld frame: ${fixture.label}`);
 }
+assert(lineTextInverted > 0, 'Side-line fixtures invert overlapping lit menu text to black');
 for (const fixture of suppressedLineCases) {
   assert.deepEqual(renderer.render(fixture.snapshot), baseline.render(fixture.snapshot), `App Text and information/feedback priority suppress line feedback: ${fixture.label}`);
 }
@@ -243,8 +253,8 @@ for (const fixture of restorationCases.filter(fixture => fixture.primeSnapshot))
   }
   const expected = fixture.kind === 'weighing' ? stable : Uint8Array.from(stable, (value, index) => {
     const x = index % 128, y = Math.floor(index / 128);
-    const indicator = fixture.kind === 'lines' ? y < 2 && (fixture.snapshot.held.circle && x < 32 || fixture.snapshot.held.square && x >= 96) :
-      glyphs.some(glyph => fixture.snapshot.held[glyph.name] && x >= glyph.x && x < glyph.x + glyph.width && y >= glyph.y && y < glyph.y + glyph.height && glyph.pixels[(y - glyph.y) * glyph.width + x - glyph.x]);
+    if (fixture.kind === 'lines') return value ^ Number(fixture.snapshot.held.circle && x < 12 || fixture.snapshot.held.square && x >= 115 && x < 127);
+    const indicator = glyphs.some(glyph => fixture.snapshot.held[glyph.name] && x >= glyph.x && x < glyph.x + glyph.width && y >= glyph.y && y < glyph.y + glyph.height && glyph.pixels[(y - glyph.y) * glyph.width + x - glyph.x]);
     return value || indicator ? 1 : 0;
   });
   renderer.render(fixture.primeSnapshot);
@@ -256,4 +266,4 @@ for (const fixture of invalidCases.filter(fixture => fixture.primeMode)) {
   renderer.render({ ...fixture.snapshot, buttonFeedback: fixture.primeMode });
   assert.deepEqual(renderer.render(fixture.snapshot), renderer.render({ ...fixture.snapshot, buttonFeedback: 'icons' }), `Invalid native feedback modes restore icons after ${fixture.primeMode}: ${fixture.label}`);
 }
-console.log(`Menu layout passed: ${checkedMenus} menu frames with stable-font/icon references; ${unchangedCases.length} unchanged weighing/info/feedback frames; ${cornerLineCases.length + suppressedLineCases.length} line-mode frames; ${xorMenuCases.length + xorUnchangedCases.length} XOR frames; ${cases.length} native/WASM comparisons`);
+console.log(`Menu layout passed: ${checkedMenus} menu frames with stable-font/icon references; ${unchangedCases.length} unchanged weighing/info/feedback frames; ${cornerLineCases.length + lineReleaseCases.length + suppressedLineCases.length} line-mode/release frames; ${xorMenuCases.length + xorUnchangedCases.length} XOR frames; ${cases.length} native/WASM comparisons`);

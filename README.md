@@ -14,9 +14,12 @@ four menu rows, with the page counter, held Circle icon and held Square icon
 spaced down the right side. `Weight Wake` shortens the longest label to make
 room for that spacing. The font, other labels and navigation are unchanged.
 In the demo's Session controls, `Button feedback` selects `Icons`,
-`Corner lines`, or `XOR corner icons`. Lines replace held-button icons with
-short marks at the top-left for Circle and top-right for Square, leaving the
-text area clear. Selection survives simulated restarts; reloading or Reset
+`Side lines`, or `XOR corner icons`. Side lines replace held-button icons with
+full-height, 12-pixel-wide strips on the left for Circle and right for Square.
+They invert the pixels underneath, including overlapping text, and disappear
+on release. Their positions match the supplied GIF, including the right strip's
+one-pixel outer margin. The bottom tare indicator is unchanged.
+Selection survives simulated restarts; reloading or Reset
 Defaults returns to Icons. The XOR choice demonstrates the proposed menu
 helper: transparent bitmaps invert the pixels beneath them at the weighing screen's rotation-aware corner
 positions, after menu content is drawn. Weighing keeps its original icons.
