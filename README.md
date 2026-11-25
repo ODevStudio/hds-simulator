@@ -10,8 +10,9 @@ WebSocket API lets automation operate the same controls and read the state.
 - [Menu demo](https://odevstudio.github.io/hds-simulator/demo/) follows `odev/menu-demo`.
 
 Both run directly in the browser and default to the 3.1.17 menu press indicators
-and App Text scrolling. The demo adds `Info` > `INT REF DATA` and a Session
-selector for experimental feedback (`Icons`, `Side lines`, `XOR corner icons`).
+and App Text scrolling. The demo shows compact `BH` and `CL` readings in
+`Info` > `Bat. Info` and offers `Icons`, `Side lines`, and `XOR corner icons`
+as alternate button feedback in Session.
 Reloading or resetting defaults restores `Firmware` feedback. Each page saves
 its own settings.
 The local WebSocket API is available only in the standalone packages or local server,

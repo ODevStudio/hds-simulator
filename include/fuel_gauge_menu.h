@@ -46,7 +46,7 @@ static void drawBatInfoPage(uint8_t page) {
       char l[16];
       char r[16];
       snprintf(l, sizeof(l), "%.2f V", voltage);
-      snprintf(r, sizeof(r), "%.1f C", reading.temperature * 0.1f - 273.15f);
+      snprintf(r, sizeof(r), "%.1f C", reading.temperature / 10.0 - 273.15);
       u8g2.drawUTF8(0, 12, l);
       u8g2.drawUTF8(64, 12, r);
       snprintf(l, sizeof(l), "%d mA", reading.currentMa);
@@ -57,8 +57,8 @@ static void drawBatInfoPage(uint8_t page) {
       snprintf(r, sizeof(r), "FCC %u", reading.fullCapacityMah);
       u8g2.drawUTF8(0, 36, l);
       u8g2.drawUTF8(64, 36, r);
-      snprintf(l, sizeof(l), "Health %u%%", reading.soh);
-      snprintf(r, sizeof(r), "Bat. %u%%", reading.soc);
+      snprintf(l, sizeof(l), "BH%u", reading.soh);
+      snprintf(r, sizeof(r), "CL%u", reading.soc);
       u8g2.drawUTF8(0, 48, l);
       u8g2.drawUTF8(64, 48, r);
       snprintf(l, sizeof(l), "CRG %s", charging ? "Y" : "N");

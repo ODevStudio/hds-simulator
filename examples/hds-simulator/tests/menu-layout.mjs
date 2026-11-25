@@ -64,7 +64,7 @@ const syntheticCases = [
   snapshot: { ...base, screen: 'main', menu, settings: { ...base.settings, screenFlipped }, held },
 }))));
 const unchangedCases = [
-  ...['weighing', 'boot', 'setup', 'status', 'about', 'wifiStatus', 'batteryInfo', 'logo', 'logoSample', 'charging', 'off'].map(screen => ({ screen })),
+  ...['weighing', 'boot', 'setup', 'status', 'about', 'wifiStatus', 'logo', 'logoSample', 'charging', 'off'].map(screen => ({ screen })),
   { screen: 'weighing', weight: -125.4, timerMs: 123000, settings: { timeOnTop: true } },
   { screen: 'weighing', weight: 1500.1 },
   { screen: 'weighing', tareUntil: 2400 },

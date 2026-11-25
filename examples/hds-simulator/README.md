@@ -108,17 +108,18 @@ Runtime weight, timer and connection state are not stored across page reloads.
 
 ## Covered Screens
 
-Boot, setup, weighing, standard menus, Status, About, WiFi Status, Logo, legacy
+Boot, setup, weighing, standard menus, Status, About, WiFi Status, Logo,
 Battery Info, transient feedback and App Text use actual firmware rasterization.
 Both panel rotations are supported. The photo presentation compensates for the
 V8.1 panel's fixed mounting rotation.
 
-The menu demo adds `Info` > `INT REF DATA`, a read-only QC screen with simulated
-battery health (`BH94`) and charge level (`CL90` at startup). The Battery slider
-changes the charge level without changing battery health.
+The demo's `Info` > `Bat. Info` shows the fuel-gauge layout with compact battery
+health (`BH94`) and charge level (`CL90` at startup). The Battery slider changes
+charge while health stays fixed. Square cycles the pages. Circle goes back one
+page or returns to Info from the first page.
 
 The default fixture is a USB-present normal reset, not an attachment-triggered
-charging wake: legacy battery hardware, BLE advertising, no WiFi connection.
+charging wake: BLE advertising, no WiFi connection.
 The boot logo lasts one simulated second; physical startup time varies.
 
 Calibration, WiFi Update and Custom Build retain their menu rows but do not

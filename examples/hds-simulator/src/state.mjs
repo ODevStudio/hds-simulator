@@ -63,7 +63,8 @@ function activate(state) {
   if (item.kind === "back") return back(state);
   if (item.kind === "exit") return beginExit(state);
   if (item.kind === "deferred") return { ...state, status: `${item.title} requires hardware and is not included in this browser simulation.` };
-  if (item.kind === "page") return { ...state, screen: item.screen === "logo" && state.logoNextSample ? "logoSample" : item.screen, feedback: null, status: "" };
+  if (item.kind === "page") return { ...state, screen: item.screen === "logo" && state.logoNextSample ? "logoSample" : item.screen,
+    info: item.screen === "batteryInfo" ? { ...state.info, batteryPage: 0 } : state.info, feedback: null, status: "" };
   if (item.kind === "toggle" || item.kind === "timeOnTop") {
     const key = item.setting ?? "timeOnTop";
     const enabled = !state.settings[key];
@@ -119,8 +120,13 @@ function applyButton(state, action) {
   if (action.type === "chord") return openMenu(wake(state), "main");
   if (["boot", "setup"].includes(state.screen)) return state;
   if (infoScreens.includes(state.screen)) {
-    const dismiss = state.screen === "batteryInfo" ? action.name === "circle" : action.name === "square";
-    if ((action.type === "tap" || action.type === "release") && dismiss) return { ...state, screen: state.menu.id,
+    if (action.type !== "tap" && action.type !== "release") return state;
+    if (state.screen === "batteryInfo") {
+      const page = state.info.batteryPage;
+      if (action.name === "circle" && page === 0) return { ...state, screen: state.menu.id };
+      return { ...state, info: { ...state.info, batteryPage: 1 - page } };
+    }
+    if (action.name === "square") return { ...state, screen: state.menu.id,
       logoNextSample: ["logo", "logoSample"].includes(state.screen) ? !state.logoNextSample : state.logoNextSample };
     return state;
   }

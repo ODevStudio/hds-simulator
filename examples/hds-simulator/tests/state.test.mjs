@@ -299,15 +299,23 @@ test("WiFi boot changes take effect on simulated restart when leaving the menu",
   assert.equal(advance(boot, 1000).screen, "weighing");
 });
 
-test("information pages swallow Circle, Square dismisses, legacy Battery Info exits on Circle", () => {
+test("information pages dismiss with Square, and Battery Info follows its two-page controls", () => {
   const status = tap(row(jump(ready(), "info"), 1), "square");
   assert.equal(status.screen, "status");
   assert.equal(tap(status, "circle").screen, "status");
   assert.equal(hold(status, "square").screen, "info");
   const battery = tap(row(jump(ready(), "info"), 3), "square");
   assert.equal(battery.screen, "batteryInfo");
-  assert.equal(tap(battery, "square").screen, "batteryInfo");
-  assert.equal(tap(battery, "circle").screen, "info");
+  assert.equal(battery.info.batteryPage, 0);
+  const secondPage = tap(battery, "square");
+  assert.equal(secondPage.screen, "batteryInfo");
+  assert.equal(secondPage.info.batteryPage, 1);
+  assert.equal(tap(secondPage, "square").info.batteryPage, 0);
+  const firstPage = tap(secondPage, "circle");
+  assert.equal(firstPage.screen, "batteryInfo");
+  assert.equal(firstPage.info.batteryPage, 0);
+  assert.equal(tap(firstPage, "circle").screen, "info");
+  assert.equal(tap(row(jump(secondPage, "info"), 3), "square").info.batteryPage, 0);
   const logo = tap(row(jump(ready(), "display"), 4), "square");
   const back = tap(logo, "square");
   assert.equal(tap(back, "square").screen, "logoSample");
@@ -358,7 +366,7 @@ test("settings persistence validates an isolated namespace and never clears unre
   assert.equal(saveSettings(defaults, { setItem() { throw Error("denied"); } }), false);
 });
 
-test("menu rows match firmware declarations plus the demo reference entry, and settings defaults match firmware", () => {
+test("standard menu rows and settings defaults match firmware declarations and visible pointer arrays", () => {
   const source = readFileSync(new URL("../../../include/menu.h", import.meta.url), "utf8").replace(/\r/g, "");
   const storage = readFileSync(new URL("../../../include/storage.h", import.meta.url), "utf8");
   const settingLinks = [
@@ -427,9 +435,8 @@ test("menu rows match firmware declarations plus the demo reference entry, and s
       return label.slice(0, -1) + (settings[link[0]] ? "x" : "o");
     });
     const frame = snapshot(jump(ready(settings), id));
-    const expectedRows = id === "info" ? [...rows, "INT REF DATA"] : rows;
-    assert.deepEqual(frame.menu.rows, expectedRows, id);
-    assert.equal(frame.menu.totalPages, Math.ceil(expectedRows.length / 4), id);
+    assert.deepEqual(frame.menu.rows, rows, id);
+    assert.equal(frame.menu.totalPages, Math.ceil(rows.length / 4), id);
   }
   assert.match(source, /const int linesPerPage =\s*4;/);
 });

@@ -21,7 +21,8 @@ bool b_negativeWeight = false, b_timeOnTop = false, b_screenFlipped = false;
 bool b_ble_enabled = false, b_is_charging = false, b_wifiEnabled = false;
 bool b_wifiOnBoot = false, b_btnFuncWhileConnected = false, b_requireHeartBeat = true;
 bool b_autoSleep = true, b_quickBoot = false, b_heartBeatIcon = false;
-bool b_hasFuelGauge = false, b_showStatusData = false, b_showWifiData = false;
+constexpr bool b_hasFuelGauge = true;
+bool b_showStatusData = false, b_showWifiData = false;
 bool b_showAbout = false, b_showLogo = false, b_showNumber = false;
 bool b_shutdownFailBle = false;
 int i_weightInt = 0, i_weightFirstDecimal = 0;
@@ -54,7 +55,14 @@ int batteryPercent() { return simBatteryPercent; }
 bool bleHasLiveClient() { return simBleConnected; }
 bool fuelGaugeCharging() { return simCharging; }
 bool fuelGaugeUsbPlugged() { return simUsb; }
-FuelGaugeReading fuelGaugeReading() { return {}; }
+FuelGaugeReading fuelGaugeReading() {
+  const float voltage = std::isfinite(f_batteryVoltage) ? std::clamp(f_batteryVoltage, 0.0f, 10.0f) : 0.0f;
+  const auto voltageMv = static_cast<unsigned>(std::lround(voltage * 1000.0f));
+  const auto charge = static_cast<unsigned>(simBatteryPercent);
+  const auto health = static_cast<unsigned>(std::clamp(input["info"]["batteryHealth"] | 94, 0, 100));
+  constexpr unsigned fullCapacity = 1275;
+  return {true, voltageMv, 3034, 0, 0, fullCapacity * charge / 100, fullCapacity, health, charge};
+}
 bool storageGetBool(int, bool) { return b_screenFlipped; }
 void invalidateEnergyOledFrame() {}
 void processMenuInfoPageExit() {}
@@ -241,21 +249,6 @@ void drawMenuFrame() {
   simMenuFrame = false;
 }
 
-void drawIntRefData(int health, int charge) {
-  constexpr char title[] = "INT REF DATA";
-  char bh[6], cl[6];
-  std::snprintf(bh, sizeof(bh), "BH%d", std::clamp(health, 0, 100));
-  std::snprintf(cl, sizeof(cl), "CL%d", charge);
-  u8g2.firstPage();
-  do {
-    u8g2.setFont(FONT_S);
-    u8g2.drawStr(AC(title), 15, title);
-    u8g2.setFont(FONT_M);
-    u8g2.drawStr(AC(bh), 37, bh);
-    u8g2.drawStr(AC(cl), 58, cl);
-  } while (u8g2.nextPage());
-}
-
 extern "C" const uint8_t *hdsRender(const char *json) {
   static bool initialized = false;
   static uint8_t output[128 * 64];
@@ -288,8 +281,7 @@ extern "C" const uint8_t *hdsRender(const char *json) {
   } else if (screen == "status") showStatus();
   else if (screen == "about") showAbout();
   else if (screen == "wifiStatus" || screen == "wifi") showWifiStatus();
-  else if (screen == "batteryInfo" || screen == "battery") drawBatInfoPage(input["info"]["batteryPage"] | 0);
-  else if (screen == "intRefData") drawIntRefData(input["info"]["batteryHealth"] | 94, simBatteryPercent);
+  else if (screen == "batteryInfo" || screen == "battery") drawBatInfoPage(std::clamp(input["info"]["batteryPage"] | 0, 0, 1));
   else if (screen == "charging") {
     t_oled_refresh = static_cast<uint32_t>(simNow - 1000UL);
     chargingOLED(simBatteryPercent, f_batteryVoltage);

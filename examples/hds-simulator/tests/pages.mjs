@@ -206,29 +206,43 @@ async function buttonFeedback(page, label, touch) {
   }
 }
 
-async function intRefData(page, label, touch) {
+async function batteryInfo(page, variant, label, touch) {
   await page.locator('#scene').selectOption('info');
-  for (let index = 0; index < 4; index++) await press(page, 'circle', touch);
-  const { menu } = await current(page);
-  check(menu.rows[menu.selected] === 'INT REF DATA' && menu.page === 2, `${label} lists the new entry on Info page 2`);
+  assert.deepEqual((await current(page)).menu.rows, ['Back', 'Status', 'About', 'Bat. Info'], `${label} keeps the stock Info menu rows`);
+  checks++;
+  if (variant !== 'demo') return;
+  for (let index = 0; index < 3; index++) await press(page, 'circle', touch);
   await press(page, 'square', touch);
   const oled = page.locator('#oled');
-  check(await oled.getAttribute('aria-label') === 'HDS INT REF DATA, battery health 94%, charge level 90%', `${label} opens the reference screen with sample readings`);
+  const opened = await current(page);
+  check(opened.screen === 'batteryInfo' && opened.info.batteryPage === 0, `${label} opens Bat. Info at page 1`);
+  check(await oled.getAttribute('aria-label') === 'HDS Bat. Info, battery health 94%, charge level 90%', `${label} exposes sample readings on Bat. Info`);
+  const isBatteryRow = index => index >= 41 * 128 && index < 50 * 128;
+  const isHealth = index => isBatteryRow(index) && index % 128 < 64;
+  const isCharge = index => isBatteryRow(index) && index % 128 >= 64;
   const initial = await pixels(page);
-  for (const [start, end] of [[0, 20], [20, 40], [40, 64]]) {
-    check(initial.slice(start * 128, end * 128).includes(186), `${label} renders reference data in rows ${start}-${end}`);
-  }
-  await screenshot(page, `${label}-int-ref-data.png`);
+  check(initial.some((value, index) => isHealth(index) && value === 186) &&
+    initial.some((value, index) => isCharge(index) && value === 186), `${label} draws both OLED readings`);
+  await screenshot(page, `${label}-battery-info-page-1.png`);
   await page.locator('#battery').press('End');
-  check(await oled.getAttribute('aria-label') === 'HDS INT REF DATA, battery health 94%, charge level 100%', `${label} updates charge independently of health`);
+  check(await oled.getAttribute('aria-label') === 'HDS Bat. Info, battery health 94%, charge level 100%', `${label} updates charge independently of health`);
   const updated = await pixels(page);
-  check(updated.every((value, index) => index >= 40 * 128 || value === initial[index]) &&
-    updated.some((value, index) => index >= 40 * 128 && value !== initial[index]), `${label} redraws only the OLED charge reading`);
-  await press(page, 'circle', touch);
-  check((await current(page)).screen === 'intRefData', `${label} Circle leaves the information screen open`);
+  check(updated.every((value, index) => !isHealth(index) || value === initial[index]) &&
+    updated.some((value, index) => isCharge(index) && value !== initial[index]), `${label} redraws the OLED charge reading without changing health`);
   await press(page, 'square', touch);
+  const second = await current(page);
+  check(second.screen === 'batteryInfo' && second.info.batteryPage === 1, `${label} Square opens Bat. Info page 2`);
+  assert.notDeepEqual(await pixels(page), updated, `${label} draws a different second page`);
+  checks++;
+  await screenshot(page, `${label}-battery-info-page-2.png`);
+  await press(page, 'circle', touch);
+  const first = await current(page);
+  check(first.screen === 'batteryInfo' && first.info.batteryPage === 0, `${label} Circle returns to Bat. Info page 1`);
+  assert.deepEqual(await pixels(page), updated, `${label} restores the updated Bat. Info readings`);
+  checks++;
+  await press(page, 'circle', touch);
   const closed = await current(page);
-  check(closed.screen === 'info' && closed.menu.selected === menu.selected, `${label} Square returns to the selected Info entry`);
+  check(closed.screen === 'info' && closed.menu.rows[closed.menu.selected] === 'Bat. Info', `${label} Circle returns to the selected Info entry`);
 }
 
 async function isolation(currentPage, demoPage) {
@@ -298,14 +312,11 @@ try {
       await navigation(page, url, variant);
       await screens(page, variant, name, touch);
       await stockButtonFeedback(page, label, touch);
-      if (variant === 'demo') {
-        await buttonFeedback(page, label, touch);
-        await intRefData(page, label, touch);
-      } else if (currentCheckout !== root) {
+      if (variant === 'demo') await buttonFeedback(page, label, touch);
+      else if (currentCheckout !== root) {
         check(await page.locator('#button-feedback').count() === 0, `${label} has no demo feedback selector`);
-        await page.locator('#scene').selectOption('info');
-        check(!(await current(page)).menu.rows.includes('INT REF DATA'), `${label} has no demo reference page`);
       }
+      await batteryInfo(page, variant, label, touch);
     }
     if (!touch) await isolation(pages[0].page, pages[1].page);
     await context.close();

@@ -84,8 +84,11 @@ export function presentState(state) {
   element('screen-label').textContent = label.toUpperCase();
   element('timer-reading').textContent = `${state.timerRunning ? 'Timer running' : 'Timer stopped'} / ${timecode(state.timerMs)}`;
   const selected = menu.rows[menu.selected] || '';
-  const oledLabel = state.screen === 'intRefData' ?
-    `HDS INT REF DATA, battery health ${state.info.batteryHealth}%, charge level ${icons.batteryPercent}%` :
+  const oledLabel = state.screen === 'batteryInfo' ? (
+    state.info.batteryPage === 0 ?
+      `HDS Bat. Info, battery health ${state.info.batteryHealth}%, charge level ${icons.batteryPercent}%` :
+      'HDS Bat. Info, true capacity and health after a full charge and discharge cycle'
+  ) :
     menuIds.includes(state.screen) ? `HDS ${category} menu, ${selected}` : `HDS ${state.screen}, ${state.weight.toFixed(1)} grams`;
   element('oled').setAttribute('aria-label', oledLabel);
 }

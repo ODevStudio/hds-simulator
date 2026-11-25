@@ -18,7 +18,7 @@ SIMULATOR_CORRECTIONS = (
     "demo-menu-four-row-button-sidebar",
     "demo-button-feedback-side-lines",
     "demo-menu-xor-corner-icons",
-    "demo-int-ref-data",
+    "demo-battery-info-compact-labels",
 )
 
 
