@@ -1,18 +1,18 @@
 {
-  "sourceCommit": "1b5f8479db640aa9403a22595e4c70f2a6a47379",
+  "sourceCommit": "8a723985843e83acec2d4e5937183229692f7c09",
   "sourceHashes": {
     "include/display.h": "4693ac8ba1f02a23f7f073626c329ee0115951824d2fdf28ec5c286e7fe805a3",
     "include/config.h": "b5e8dcf6f84936b24f03d2b11457bdc3437a7ae1d27d79b7b4a2fdedfcea167c",
     "include/boot_startup.h": "a47fb5381eef6458a2c9d4b5849c61c393d86719811c869a075d8619a397bcbc",
     "include/menu.h": "bc8dd617b08c64c1cd1d7c1170e295e116fb4f6264da426f86ee4d9882ee822c",
-    "include/fuel_gauge_menu.h": "e082aa42d46941419937d226372740e6e8f557266fa236386e94363cdf9336b7",
+    "include/fuel_gauge_menu.h": "8ee415456eddd7da9a8c673c0722d41967512e7b39fab7a301f9911560523a75",
     "src/hds.ino": "29743132848c41741fa216897e92eb71f939bb4c08681733b8a4dec9009871ba",
     "include/app_prompt_scroll.h": "13a726a85d94fd207d330726f53e637fb4b9d880559860c86b8aa59c0de9952d",
     "include/energy_runtime_policy.h": "ae27107cbe831eac009c2ec4cd186c9f604b231e8102f15bf3e337e67b3bea0b",
     "include/mdns_name.h": "7598218f203594af92d162b8892f862300bd95cdaddbe19218828fb2548b75a7",
     "examples/hds-simulator/renderer/adapter.h": "4701fbb8cf85670ffb5bc099d6cf7d3b4c50600f27f42db9af521e0b9cdf6d46",
-    "examples/hds-simulator/renderer/renderer.cpp": "5cf9f9bbee8f279d696b3dd4412c6894c0c7d2d70e29ad021880fa8fbcc9a3b2",
-    "tools/build_hds_simulator.py": "bd85c15b76d5431ceef7d2a3e2c8ead04e0f518481eca93dac2e4f09a94754ac"
+    "examples/hds-simulator/renderer/renderer.cpp": "cac395cd370076fb394f9f79db473fe7aa33318706c320062bded9557f87c29f",
+    "tools/build_hds_simulator.py": "3785ceca1985799e4ecebf0870e66be94ba0e5c60c5426e5e7f67969f264fac0"
   },
   "productionFunctions": {
     "include/display.h": [
@@ -57,7 +57,7 @@
     "demo-menu-four-row-button-sidebar",
     "demo-button-feedback-side-lines",
     "demo-menu-xor-corner-icons",
-    "demo-int-ref-data"
+    "demo-battery-info-compact-labels"
   ],
   "u8g2SourceHash": "5e9db39d6515eeb7719754368ae684aec8736224cd8c0849a09c486562860254"
 }
