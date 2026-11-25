@@ -234,6 +234,21 @@ void drawMenuFrame() {
   simMenuFrame = false;
 }
 
+void drawIntRefData(int health, int charge) {
+  constexpr char title[] = "INT REF DATA";
+  char bh[6], cl[6];
+  std::snprintf(bh, sizeof(bh), "BH%d", std::clamp(health, 0, 100));
+  std::snprintf(cl, sizeof(cl), "CL%d", charge);
+  u8g2.firstPage();
+  do {
+    u8g2.setFont(FONT_S);
+    u8g2.drawStr(AC(title), 15, title);
+    u8g2.setFont(FONT_M);
+    u8g2.drawStr(AC(bh), 37, bh);
+    u8g2.drawStr(AC(cl), 58, cl);
+  } while (u8g2.nextPage());
+}
+
 extern "C" const uint8_t *hdsRender(const char *json) {
   static bool initialized = false;
   static uint8_t output[128 * 64];
@@ -267,6 +282,7 @@ extern "C" const uint8_t *hdsRender(const char *json) {
   else if (screen == "about") showAbout();
   else if (screen == "wifiStatus" || screen == "wifi") showWifiStatus();
   else if (screen == "batteryInfo" || screen == "battery") drawBatInfoPage(input["info"]["batteryPage"] | 0);
+  else if (screen == "intRefData") drawIntRefData(input["info"]["batteryHealth"] | 94, simBatteryPercent);
   else if (screen == "charging") {
     t_oled_refresh = static_cast<uint32_t>(simNow - 1000UL);
     chargingOLED(simBatteryPercent, f_batteryVoltage);

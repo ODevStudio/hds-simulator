@@ -22,7 +22,8 @@ const renderer = await createRenderer({ wasmBinary });
 assert.equal(renderer.metadata.sourceCommit, metadata.sourceCommit);
 assert.equal(renderer.metadata.u8g2Version, '2.36.18');
 assert.deepEqual(renderer.metadata.simulatorCorrections, metadata.simulatorCorrections);
-assert.deepEqual(metadata.simulatorCorrections, ['usb-charging-icon-uses-actual-charging-state', 'demo-menu-four-row-button-sidebar', 'demo-button-feedback-side-lines', 'demo-menu-xor-corner-icons']);
+assert.deepEqual(metadata.simulatorCorrections, ['usb-charging-icon-uses-actual-charging-state', 'demo-menu-four-row-button-sidebar',
+  'demo-button-feedback-side-lines', 'demo-menu-xor-corner-icons', 'demo-int-ref-data']);
 
 const base = {
   screen: 'weighing', now: 2000, weight: 0, timerMs: 0,
@@ -42,6 +43,9 @@ const add = (snapshot) => {
 for (const screen of ['boot', 'setup', 'weighing', 'main', 'scale', 'connections', 'display',
   'power', 'info', 'status', 'about', 'wifiStatus', 'batteryInfo', 'logo', 'logoSample', 'charging', 'off']) {
   add({ screen });
+}
+for (const batteryPercent of [0, 90, 100]) {
+  add({ screen: 'intRefData', icons: { ...base.icons, batteryPercent }, info: { ...base.info, batteryHealth: 94 } });
 }
 for (const weight of [-1000, -999.9, -0.1, 0, 0.1, 9.9, 10, 99.9, 100, 999.9, 1000, 1500, 1500.1]) {
   for (const timerMs of [0, 1000, 123000]) {

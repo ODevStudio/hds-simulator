@@ -1,6 +1,6 @@
 export const menuIds = Object.freeze(["main", "scale", "connections", "display", "power", "info"]);
 export const menuRowsPerPage = 4;
-export const infoScreens = Object.freeze(["status", "about", "wifiStatus", "batteryInfo", "logo", "logoSample"]);
+export const infoScreens = Object.freeze(["status", "about", "wifiStatus", "batteryInfo", "intRefData", "logo", "logoSample"]);
 
 const toggle = (id, title, setting) => Object.freeze({ id, title, setting, kind: "toggle" });
 const page = (id, title, screen = id) => Object.freeze({ id, title, screen, kind: "page" });
@@ -43,7 +43,13 @@ export const menuDefinitions = Object.freeze({
     toggle("quickBoot", "Quick Boot", "quickBoot"),
     Object.freeze({ id: "wakeOnWeight", kind: "wakeOnWeight" }),
   ]),
-  info: Object.freeze([back, page("status", "Status"), page("about", "About"), page("batteryInfo", "Bat. Info")]),
+  info: Object.freeze([
+    back,
+    page("status", "Status"),
+    page("about", "About"),
+    page("batteryInfo", "Bat. Info"),
+    page("intRefData", "INT REF DATA"),
+  ]),
 });
 
 export function isMenu(screen) {

@@ -180,6 +180,31 @@ async function buttonFeedback(page, label, touch) {
   }
 }
 
+async function intRefData(page, label, touch) {
+  await page.locator('#scene').selectOption('info');
+  for (let index = 0; index < 4; index++) await press(page, 'circle', touch);
+  const { menu } = await current(page);
+  check(menu.rows[menu.selected] === 'INT REF DATA' && menu.page === 2, `${label} lists the new entry on Info page 2`);
+  await press(page, 'square', touch);
+  const oled = page.locator('#oled');
+  check(await oled.getAttribute('aria-label') === 'HDS INT REF DATA, battery health 94%, charge level 90%', `${label} opens the reference screen with sample readings`);
+  const initial = await pixels(page);
+  for (const [start, end] of [[0, 20], [20, 40], [40, 64]]) {
+    check(initial.slice(start * 128, end * 128).includes(186), `${label} renders reference data in rows ${start}-${end}`);
+  }
+  await screenshot(page, `${label}-int-ref-data.png`);
+  await page.locator('#battery').press('End');
+  check(await oled.getAttribute('aria-label') === 'HDS INT REF DATA, battery health 94%, charge level 100%', `${label} updates charge independently of health`);
+  const updated = await pixels(page);
+  check(updated.every((value, index) => index >= 40 * 128 || value === initial[index]) &&
+    updated.some((value, index) => index >= 40 * 128 && value !== initial[index]), `${label} redraws only the OLED charge reading`);
+  await press(page, 'circle', touch);
+  check((await current(page)).screen === 'intRefData', `${label} Circle leaves the information screen open`);
+  await press(page, 'square', touch);
+  const closed = await current(page);
+  check(closed.screen === 'info' && closed.menu.selected === menu.selected, `${label} Square returns to the selected Info entry`);
+}
+
 async function isolation(currentPage, demoPage) {
   for (const page of [currentPage, demoPage]) await press(page, 'reset-defaults');
   await currentPage.evaluate(() => localStorage.setItem('hds-pages-unrelated', 'keep'));
@@ -246,6 +271,7 @@ try {
       await navigation(page, url, variant);
       await screens(page, variant, name, touch);
       await buttonFeedback(page, `${variant}-${name}`, touch);
+      if (variant === 'demo') await intRefData(page, `${variant}-${name}`, touch);
     }
     if (!touch) await isolation(pages[0].page, pages[1].page);
     await context.close();

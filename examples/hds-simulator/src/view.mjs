@@ -84,7 +84,10 @@ export function presentState(state) {
   element('screen-label').textContent = label.toUpperCase();
   element('timer-reading').textContent = `${state.timerRunning ? 'Timer running' : 'Timer stopped'} / ${timecode(state.timerMs)}`;
   const selected = menu.rows[menu.selected] || '';
-  element('oled').setAttribute('aria-label', menuIds.includes(state.screen) ? `HDS ${category} menu, ${selected}` : `HDS ${state.screen}, ${state.weight.toFixed(1)} grams`);
+  const oledLabel = state.screen === 'intRefData' ?
+    `HDS INT REF DATA, battery health ${state.info.batteryHealth}%, charge level ${icons.batteryPercent}%` :
+    menuIds.includes(state.screen) ? `HDS ${category} menu, ${selected}` : `HDS ${state.screen}, ${state.weight.toFixed(1)} grams`;
+  element('oled').setAttribute('aria-label', oledLabel);
 }
 
 export function enableControls(metadata) {

@@ -358,7 +358,7 @@ test("settings persistence validates an isolated namespace and never clears unre
   assert.equal(saveSettings(defaults, { setItem() { throw Error("denied"); } }), false);
 });
 
-test("standard menu rows and settings defaults match firmware declarations and visible pointer arrays", () => {
+test("menu rows match firmware declarations plus the demo reference entry, and settings defaults match firmware", () => {
   const source = readFileSync(new URL("../../../include/menu.h", import.meta.url), "utf8").replace(/\r/g, "");
   const storage = readFileSync(new URL("../../../include/storage.h", import.meta.url), "utf8");
   const settingLinks = [
@@ -427,8 +427,9 @@ test("standard menu rows and settings defaults match firmware declarations and v
       return label.slice(0, -1) + (settings[link[0]] ? "x" : "o");
     });
     const frame = snapshot(jump(ready(settings), id));
-    assert.deepEqual(frame.menu.rows, rows, id);
-    assert.equal(frame.menu.totalPages, Math.ceil(rows.length / 4), id);
+    const expectedRows = id === "info" ? [...rows, "INT REF DATA"] : rows;
+    assert.deepEqual(frame.menu.rows, expectedRows, id);
+    assert.equal(frame.menu.totalPages, Math.ceil(expectedRows.length / 4), id);
   }
   assert.match(source, /const int linesPerPage =\s*4;/);
 });

@@ -129,6 +129,10 @@ Battery Info, transient feedback and App Text use actual firmware rasterization.
 Both panel rotations are supported. The photo presentation compensates for the
 V8.1 panel's fixed mounting rotation.
 
+The menu demo adds `Info` > `INT REF DATA`, a read-only QC screen with simulated
+battery health (`BH94`) and charge level (`CL90` at startup). The Battery slider
+changes the charge level without changing battery health.
+
 The default fixture is a USB-present normal reset, not an attachment-triggered
 charging wake: legacy battery hardware, BLE advertising, no WiFi connection.
 The boot logo lasts one simulated second; physical startup time varies.

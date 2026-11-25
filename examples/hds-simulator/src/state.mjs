@@ -17,10 +17,10 @@ export function createState(settings = defaults) {
     settings: saved, menu: { id: "main", selected: 0 }, buttons: initialButtons(), chordAt: null,
     grossWeight: 0, tareOffset: 0, pourRate: 3, pouring: false, timerMs: 0, timerRunning: false,
     icons: { bleEnabled: true, bleConnected: false, wifiEnabled: saved.wifiOnBoot, wifiConnected: false,
-      batteryPercent: 75, usbPresent: true, charging: true, heartbeat: false },
+      batteryPercent: 90, usbPresent: true, charging: true, heartbeat: false },
     info: { firmwareVersion: "FW: 3.1.16", buildDate: "Nov 09 2026", revision: "6f2ac69",
       deviceName: "hds-simulator", ssid: "N/A", ip: "0.0.0.0", wifiMode: saved.wifiOnBoot ? "AP" : "Idle",
-      wifiCredentialsSaved: false, batteryVoltage: 3.925, batteryPage: 0, calibrated: false },
+      wifiCredentialsSaved: false, batteryVoltage: 4.03, batteryHealth: 94, batteryPage: 0, calibrated: false },
     feedback: null, status: "", restartPending: false, logoNextSample: false,
     prompt: emptyPrompt(), tareUntil: 0, shutdownUntil: 0, menuExitedAt: -1001, lastActivityAt: 0,
   };
