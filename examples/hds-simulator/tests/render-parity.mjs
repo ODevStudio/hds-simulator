@@ -62,7 +62,7 @@ add({ tareUntil: 2400 });
 add({ shutdownUntil: 5000 });
 add({ screen: 'main', feedback: { text: 'Timer Top', text2: 'ON', until: 3000 } });
 add({ screen: 'main', feedback: { text: 'A very long feedback label', text2: '', until: 3000 } });
-const promptTimes = [0, 1000, 1019, 1020, 1038, 1039, 2000, 2462, 3461, 3462];
+const promptTimes = [0, 1000, 1019, 1020, 1038, 1039, 2000, 2442, 2443, 3442, 3443];
 for (const now of promptTimes) {
   add({ now, prompt: { visible: true, startedAt: 0, text: 'Carpano Antica Sweet Vermouth: 31g' } });
 }
@@ -169,8 +169,9 @@ assert.deepEqual(promptAt(0), promptAt(1019));
 assert.notDeepEqual(promptAt(1019), promptAt(1020));
 assert.deepEqual(promptAt(1020), promptAt(1038));
 assert.notDeepEqual(promptAt(1038), promptAt(1039));
-assert.deepEqual(promptAt(2462), promptAt(3461));
-assert.deepEqual(promptAt(0), promptAt(3462));
+assert.notDeepEqual(promptAt(2442), promptAt(2443));
+assert.deepEqual(promptAt(2443), promptAt(3442));
+assert.deepEqual(promptAt(0), promptAt(3443));
 for (const offset of [0.25, 123456.75, 0xfffffe00 + 0.25]) {
   for (const elapsed of promptTimes) {
     const snapshot = { ...base, now: offset + elapsed,
