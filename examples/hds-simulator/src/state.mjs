@@ -18,7 +18,7 @@ export function createState(settings = defaults) {
     grossWeight: 0, tareOffset: 0, pourRate: 3, pouring: false, timerMs: 0, timerRunning: false,
     icons: { bleEnabled: true, bleConnected: false, wifiEnabled: saved.wifiOnBoot, wifiConnected: false,
       batteryPercent: 75, usbPresent: true, charging: true, heartbeat: false },
-    info: { firmwareVersion: "FW: 3.1.16", buildDate: "Nov 09 2026", revision: "6f2ac69",
+    info: { firmwareVersion: "FW: 3.1.17", buildDate: "Nov 20 2026", revision: "1efca39",
       deviceName: "hds-simulator", ssid: "N/A", ip: "0.0.0.0", wifiMode: saved.wifiOnBoot ? "AP" : "Idle",
       wifiCredentialsSaved: false, batteryVoltage: 3.925, batteryPage: 0, calibrated: false },
     feedback: null, status: "", restartPending: false, logoNextSample: false,

@@ -138,9 +138,9 @@ void configureSnapshot() {
   simBatteryPercent = std::clamp(icons["batteryPercent"] | 75, 0, 100);
   simCircle = root["held"]["circle"] | false;
   simSquare = root["held"]["square"] | false;
-  simVersion = readText(info["firmwareVersion"], "FW: 3.1.16");
-  simDate = readText(info["buildDate"], "Nov 09 2026");
-  simRevision = readText(info["revision"], HDS_SIM_COMMIT_SHORT);
+  simVersion = readText(info["firmwareVersion"], "FW: 3.1.17");
+  simDate = readText(info["buildDate"], "Nov 20 2026");
+  simRevision = readText(info["revision"], "1efca39");
   simDeviceName = readText(info["deviceName"], "hds-simulator");
   simSsid = readText(info["ssid"], "N/A");
   simIp = readText(info["ip"], "0.0.0.0");
@@ -186,7 +186,7 @@ void drawWeighing() {
       drawWeightAt(f_displayedValue, LCDHeight - 30);
       u8g2.setFont(u8g2_font_6x10_tr);
       const AppPromptScrollState scroll = {true, 1, readMillis(prompt["startedAt"])};
-      const int x = appPromptTextX(scroll, u8g2.getUTF8Width(text.c_str()), LCDWidth, simNow);
+      const int x = appPromptTextX(scroll, u8g2.getStrWidth(text.c_str()), LCDWidth, simNow);
       u8g2.drawStr(x, LCDHeight - 16, text.c_str());
     } else {
       drawWeightAt(f_displayedValue, -1);
@@ -199,6 +199,14 @@ void drawWeighing() {
     drawHeartBeat();
     drawTare();
     drawShutdownFail();
+  } while (u8g2.nextPage());
+}
+
+void drawExitMenu() {
+  u8g2.setFont(FONT_M);
+  u8g2.firstPage();
+  do {
+    u8g2.drawStr(AC(actionMessage.c_str()), AM(), actionMessage.c_str());
   } while (u8g2.nextPage());
 }
 
@@ -221,7 +229,8 @@ extern "C" const uint8_t *hdsRender(const char *json) {
   u8g2_SetFontMode(&u8g2.display, 1);
   u8g2.setDrawColor(1);
   const String screen = readText(input["screen"], "weighing");
-  if (t_actionMessageDelay > 0) showMenu();
+  if (t_actionMessageDelay > 0 && actionMessage == "Exit Menu") drawExitMenu();
+  else if (t_actionMessageDelay > 0) showMenu();
   else if (screen == "boot" || screen == "logo") {
     b_showNumber = false;
     renderBootLogo();

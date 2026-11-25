@@ -1,15 +1,20 @@
 # HDS Browser Simulator
 
-A local, browser-only simulator of standard V8.1 HDS firmware at `6f2ac69`
-(3.1.16). It runs the firmware's U8g2 drawing functions, fonts and icons in
-WebAssembly, with a separate deterministic model for buttons, settings and time.
-It is not an ESP32 or electrical-hardware emulator.
+A browser simulator for standard V8.1 HDS. It runs the firmware's U8g2 drawing
+functions, fonts and icons in WebAssembly, with a separate deterministic model
+for buttons, settings and time. Menu drawing and App Text scrolling match
+firmware `3.1.17` (`1efca39`); the rest builds on the earlier firmware reference
+at `6f2ac69`. It does not emulate the ESP32 or electrical hardware.
+
+While held in menus, Circle and Square invert the left and right OLED strips,
+respectively, as in 3.1.17. Weighing keeps its original corner icons. App Text
+scrolls at 52 pixels per second, with a one-second pause at each end.
 
 One simulator-only correction replaces the charging bolt with the actual
 battery-level icon when USB is present but charging is inactive. It uses the
 firmware's battery buckets, blink timing and bitmap assets wherever a charging
 icon is drawn. Existing sample icons and menus without charging icons remain
-unchanged. Firmware source stays pinned; renderer metadata records the correction.
+unchanged. Renderer metadata records the correction.
 
 ## Run Without Build Tools
 

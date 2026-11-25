@@ -49,7 +49,7 @@ def generateProduction(cache):
                         "void drawHeartBeat()", "void drawBattery(unsigned long now)", "void drawTare()",
                         "void drawShutdownFail()", "void chargingOLED(int perc, float voltage)"),
         "include/menu.h": ("void showWifiStatus()", "void showStatus()", "void showAbout()",
-                           "void showLogo()", "void showMenu()"),
+                           "void showLogo()", "void drawMenuButtonIndicators()", "void showMenu()"),
         "include/fuel_gauge_menu.h": ("static uint8_t batInfoTotalPages()", "static void drawBatInfoPage(uint8_t page)"),
     }
     for name, signatures in functions.items():

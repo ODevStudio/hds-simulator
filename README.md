@@ -9,9 +9,9 @@ WebSocket API lets automation operate the same controls and read the state.
 - [Current simulator](https://odevstudio.github.io/hds-simulator/) follows `main`.
 - [Menu demo](https://odevstudio.github.io/hds-simulator/demo/) follows `odev/menu-demo`.
 
-Both run directly in the browser without installing anything. The demo initially
-matches the current simulator; menu-layout experiments can be committed to
-`odev/menu-demo` without changing the current page. Each page saves its own settings.
+Both run directly in the browser without installing anything. The demo branch can
+preview menu experiments without changing the current page. Each page saves its own
+settings.
 The local WebSocket API is available only in the standalone packages or local server,
 not on GitHub Pages. There is no Bluetooth connection in either version.
 
@@ -83,11 +83,12 @@ Open `http://localhost:18916/`. Prebuilt renderer files are committed under
 
 ## Renderer Rebuild
 
-The initial renderer derives from standard V8.1 HDS firmware
-[`6f2ac69`](https://github.com/decentespresso/openscale/commit/6f2ac693f7acfc7f476157d36320d7aa67c467fd),
-version 3.1.16. Simulator changes were prepared on 2026-11-11. Its metadata
-records the reference source hashes and the explicit USB charging-icon
-correction; firmware reference files were not changed for that correction.
+The renderer builds on the standard V8.1 HDS firmware source at
+[`6f2ac69`](https://github.com/decentespresso/openscale/commit/6f2ac693f7acfc7f476157d36320d7aa67c467fd).
+It uses [3.1.17](https://github.com/decentespresso/openscale/releases/tag/v3.1.17)
+for the menu drawing and App Text scrolling behavior and displays that release in
+About. This is not a full firmware port. The renderer metadata records source
+hashes and the simulator's USB charging-icon correction.
 
 Only changing the native OLED renderer requires Python and an activated
 Emscripten 3.1.74 SDK. U8g2 2.36.18 and ArduinoJson 7.4.3 source is vendored:
@@ -100,7 +101,8 @@ No ESP-IDF or PlatformIO build is needed. `include/`, `src/` and
 `platformio.ini` preserve firmware reference source for extraction and tests;
 this standalone repository does not provide a supported hardware-firmware build.
 Future rebuilds record this repository's current Git commit as their source
-commit. The simulated firmware fixture remains pinned to the version above.
+commit. The About screen uses the pinned firmware release, not this repository's
+build commit.
 
 ## Verification
 
@@ -117,7 +119,7 @@ require Playwright Firefox. Existing installations can be selected through
 The [developer README](examples/hds-simulator/README.md) lists additional
 native/WASM pixel and photo-framing checks.
 
-The reviewed build passed 289 Chromium/Firefox numeric checks, 125 API checks,
+The original reviewed packages passed 289 Chromium/Firefox numeric checks, 125 API checks,
 860 native/WASM frames, 160 charging-icon comparisons, 22 unchanged menu/sample
 comparisons, and 28 photo-framing views. The Windows portable package was
 executed; Mac archive hashes, shell syntax and executable permissions were

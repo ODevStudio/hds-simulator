@@ -89,7 +89,7 @@ export function presentState(state) {
 export function enableControls(metadata) {
   element('controls-fieldset').disabled = false;
   for (const id of ['play-pause', 'step', 'restart', 'scene', 'circle', 'square']) element(id).disabled = false;
-  element('renderer-version').textContent = `U8g2 ${metadata?.u8g2Version || '2.36.18'} / 6f2ac69`;
+  element('renderer-version').textContent = `U8g2 ${metadata?.u8g2Version || '2.36.18'} / 1efca39`;
 }
 
 export function setView(mode) {

@@ -22,6 +22,9 @@ test("standard USB reset boots for one second, with firmware defaults and no gau
   assert.equal(frame.icons.usbPresent, true);
   assert.equal(frame.icons.bleEnabled, true);
   assert.equal(frame.icons.wifiEnabled, false);
+  assert.equal(frame.info.firmwareVersion, "FW: 3.1.17");
+  assert.equal(frame.info.buildDate, "Nov 20 2026");
+  assert.equal(frame.info.revision, "1efca39");
   assert.equal(frame.controls.grossWeight, 0);
   assert.equal(frame.controls.pourRate, 3);
   assert.equal(frame.timerMs, 0);

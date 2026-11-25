@@ -112,6 +112,18 @@ async function screens(page, variant, viewport, touch) {
   check((await current(page)).menu.selected === 1, `${label} physical Circle navigates menus`);
   await press(page, 'square', touch);
   check((await current(page)).screen === 'scale', `${label} physical Square opens a submenu`);
+  const menuPixels = await pixels(page);
+  await page.locator('#circle').focus();
+  await page.keyboard.down('c');
+  await page.keyboard.down('s');
+  const invertSides = menuPixels.map((value, index) => {
+    const x = index % 128;
+    return x < 12 || x >= 115 && x < 127 ? value === 186 ? 40 : 186 : value;
+  });
+  assert.deepEqual(await pixels(page), invertSides, `${label} shows the firmware XOR side lines`);
+  checks++;
+  await page.keyboard.up('s');
+  await page.keyboard.up('c');
   await screenshot(page, `${label}-menu.png`);
   await menuSetting(page, 3, touch);
   await page.locator('#scene').selectOption('weighing');
@@ -119,9 +131,9 @@ async function screens(page, variant, viewport, touch) {
   await press(page, 'show-prompt', touch);
   check((await current(page)).prompt.visible, `${label} opt-in App Text works without a server API`);
   const initial = await pixels(page);
-  await step(page, 999);
+  await step(page, 1019);
   check(JSON.stringify(await pixels(page)) === JSON.stringify(initial), `${label} prompt initially holds`);
-  await step(page, 101);
+  await step(page, 1);
   check(JSON.stringify(await pixels(page)) !== JSON.stringify(initial), `${label} prompt scrolls on virtual time`);
   await screenshot(page, `${label}-scroll.png`);
 }

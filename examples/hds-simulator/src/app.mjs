@@ -11,6 +11,7 @@ let renderer;
 let playing = true;
 let lastWallTime = null;
 let lastFrame = -1;
+let lastOledFrame = -1;
 let savedSettings = JSON.stringify(state.settings);
 let failedSettings = null;
 let storageError = '';
@@ -20,11 +21,16 @@ export function getSnapshot() {
   return snapshot(state);
 }
 
+function redrawOled(current) {
+  if (renderer) presentPixels(renderer.render(current));
+  lastOledFrame = Math.floor(current.now * 52 / 1000);
+}
+
 function redraw() {
   const current = snapshot(state);
   presentState(current);
   if (storageError) document.getElementById('notice').textContent = storageError;
-  if (renderer) presentPixels(renderer.render(current));
+  redrawOled(current);
   lastFrame = Math.floor(current.now / 100);
   publish();
 }
@@ -77,6 +83,8 @@ function tick(wallTime) {
     if (Math.floor(state.now / 100) !== lastFrame) {
       persistSettings();
       redraw();
+    } else if (state.prompt.visible && Math.floor(state.now * 52 / 1000) !== lastOledFrame) {
+      redrawOled(snapshot(state));
     }
   }
   lastWallTime = wallTime;

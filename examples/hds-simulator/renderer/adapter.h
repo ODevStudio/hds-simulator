@@ -27,6 +27,7 @@ struct NativeDisplay {
   void setDisplayRotation(const u8g2_cb_t *rotation) { u8g2_SetDisplayRotation(&display, rotation); }
   int getDisplayWidth() { return u8g2_GetDisplayWidth(&display); }
   int getDisplayHeight() { return u8g2_GetDisplayHeight(&display); }
+  int getStrWidth(const char *text) { return u8g2_GetStrWidth(&display, text); }
   int getUTF8Width(const char *text) { return u8g2_GetUTF8Width(&display, text); }
   int getMaxCharHeight() { return u8g2_GetMaxCharHeight(&display); }
   void firstPage() { u8g2_FirstPage(&display); }
