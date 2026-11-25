@@ -1851,10 +1851,11 @@ bool renderMenuInfoPage() {
 
 void drawMenuButtonIndicators() {
   u8g2.setDrawColor(2);
-  u8g2.setBitmapMode(1);
-  drawButton();
+  if (digitalRead(BUTTON_CIRCLE) == LOW)
+    u8g2.drawBox(0, 0, 12, LCDHeight);
+  if (digitalRead(BUTTON_SQUARE) == LOW)
+    u8g2.drawBox(LCDWidth - 13, 0, 12, LCDHeight);
   u8g2.setDrawColor(1);
-  u8g2.setBitmapMode(0);
 }
 
 void showMenu() {
@@ -1886,7 +1887,6 @@ void showMenu() {
                      actionMessage2.c_str());
       }
     } else {
-      actionMessage == "Default";
       currentPage = currentIndex / linesPerPage + 1;
       totalPages = (currentMenuSize + linesPerPage - 1) / linesPerPage;
       char pageInfo[10];
@@ -1905,7 +1905,11 @@ void showMenu() {
                        currentMenu[i]->name);
       }
     }
+#ifdef HDS_SIM_DRAW_MENU_INDICATORS
+    HDS_SIM_DRAW_MENU_INDICATORS();
+#else
     drawMenuButtonIndicators();
+#endif
   } while (u8g2.nextPage());
   lastMenuFrameRender = now;
   menuFrameShowsActionMessage = actionMessageVisible;

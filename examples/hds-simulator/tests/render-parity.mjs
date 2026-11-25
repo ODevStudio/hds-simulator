@@ -30,7 +30,7 @@ const base = {
   settings: { screenFlipped: true, timeOnTop: false, autoSleep: true, requireHeartbeat: true },
   icons: { bleEnabled: true, bleConnected: true, wifiEnabled: false, batteryPercent: 75 },
   held: { circle: false, square: false },
-  info: { firmwareVersion: 'FW: 3.1.16', buildDate: 'Nov 09 2026', revision: '6f2ac69',
+  info: { firmwareVersion: 'FW: 3.1.17', buildDate: 'Nov 20 2026', revision: '1efca39',
     deviceName: 'hds-simulator', ssid: 'N/A', ip: '0.0.0.0', batteryVoltage: 3.8 },
   menu: { rows: ['Exit', 'Scale', 'Connections', 'Display', 'Power', 'Info'], selected: 0 },
 };
@@ -66,13 +66,13 @@ add({ tareUntil: 2400 });
 add({ shutdownUntil: 5000 });
 add({ screen: 'main', feedback: { text: 'Timer Top', text2: 'ON', until: 3000 } });
 add({ screen: 'main', feedback: { text: 'A very long feedback label', text2: '', until: 3000 } });
-for (const now of [0, 999, 1000, 1099, 1100, 1600, 8499, 8500, 9499, 9500]) {
+for (const now of [0, 999, 1000, 1019, 1020, 1600, 2442, 2443, 3442, 3443]) {
   add({ now, prompt: { visible: true, startedAt: 0, text: 'Carpano Antica Sweet Vermouth: 31g' } });
 }
 add({ prompt: { visible: true, startedAt: 0, text: 'Add Gin: 35g' } });
 add({ prompt: { visible: true, startedAt: 0, text: 'M'.repeat(128) } });
 for (const offset of [0.25, 123456.75, 0xfffffe00 + 0.25]) {
-  for (const elapsed of [0, 1099, 1100, 1600, 8500, 9499, 9500]) {
+  for (const elapsed of [0, 1019, 1020, 1600, 2443, 3442, 3443]) {
     add({ now: offset + elapsed, timerMs: 123456.75,
       prompt: { visible: true, startedAt: offset, text: 'Carpano Antica Sweet Vermouth: 31g' } });
   }
@@ -144,12 +144,13 @@ for (const fixture of unchangedMenus) {
 }
 const promptAt = now => renderer.render({ ...base, now,
   prompt: { visible: true, startedAt: 0, text: 'Carpano Antica Sweet Vermouth: 31g' } });
-assert.deepEqual(promptAt(0), promptAt(1099));
-assert.notDeepEqual(promptAt(0), promptAt(1100));
-assert.deepEqual(promptAt(8500), promptAt(9499));
-assert.deepEqual(promptAt(0), promptAt(9500));
+assert.deepEqual(promptAt(0), promptAt(1019));
+assert.notDeepEqual(promptAt(0), promptAt(1020));
+assert.notDeepEqual(promptAt(2442), promptAt(2443));
+assert.deepEqual(promptAt(2443), promptAt(3442));
+assert.deepEqual(promptAt(0), promptAt(3443));
 for (const offset of [0.25, 123456.75, 0xfffffe00 + 0.25]) {
-  for (const elapsed of [0, 1099, 1100, 1600, 8500, 9499, 9500]) {
+  for (const elapsed of [0, 1019, 1020, 1600, 2443, 3442, 3443]) {
     const snapshot = { ...base, now: offset + elapsed,
       prompt: { visible: true, startedAt: offset, text: 'Carpano Antica Sweet Vermouth: 31g' } };
     assert.deepEqual(renderer.render(snapshot), promptAt(elapsed), `Fractional clock offset ${offset}, elapsed ${elapsed}`);

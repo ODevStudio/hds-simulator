@@ -10,7 +10,8 @@ import { promisify } from 'node:util';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE_PATH || 'playwright');
-const root = fileURLToPath(new URL('../../../', import.meta.url));
+const root = path.resolve(fileURLToPath(new URL('../../../', import.meta.url)));
+const currentCheckout = path.resolve(process.env.HDS_CURRENT_CHECKOUT || root);
 const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'hds-simulator-pages-'));
 const site = path.join(temporary, 'site');
 const output = process.env.HDS_SCREENSHOTS || path.join(root, '.pio.nosync/hds-simulator-checks/pages');
@@ -23,6 +24,9 @@ let errors = [];
 let requests = [];
 let sockets = [];
 const check = (condition, message) => { assert(condition, message); checks++; };
+const invert = value => value === 186 ? 40 : 186;
+const leftStrip = index => index % 128 < 12;
+const rightStrip = index => index % 128 >= 115 && index % 128 < 127;
 const current = page => page.evaluate(async () => (await import('./src/app.mjs')).getSnapshot());
 const step = (page, ms) => page.evaluate(async ms => (await import('./src/app.mjs')).advanceTime(ms), ms);
 const pixels = page => page.locator('#oled').evaluate(canvas => Array.from(canvas.getContext('2d').getImageData(0, 0, 128, 64).data).filter((_, index) => index % 4 === 0));
@@ -94,6 +98,8 @@ async function screens(page, variant, viewport, touch) {
   await screenshot(page, `${label}-boot.png`);
   await step(page, 1000);
   check((await current(page)).screen === 'weighing', `${label} boot follows virtual time`);
+  const { firmwareVersion, buildDate, revision } = (await current(page)).info;
+  check(firmwareVersion === 'FW: 3.1.17' && buildDate === 'Nov 20 2026' && revision === '1efca39', `${label} uses the stock 3.1.17 firmware identity`);
   const lit = (await pixels(page)).filter(value => value > 100).length;
   check(lit > 0 && lit < 8192, `${label} weighing OLED contains actual raster pixels`);
   check(await page.locator('.scale-photo').evaluate(image => image.complete && image.naturalWidth === 2362), `${label} photograph loads`);
@@ -119,17 +125,37 @@ async function screens(page, variant, viewport, touch) {
   await press(page, 'show-prompt', touch);
   check((await current(page)).prompt.visible, `${label} opt-in App Text works without a server API`);
   const initial = await pixels(page);
-  await step(page, 999);
-  check(JSON.stringify(await pixels(page)) === JSON.stringify(initial), `${label} prompt initially holds`);
-  await step(page, 101);
-  check(JSON.stringify(await pixels(page)) !== JSON.stringify(initial), `${label} prompt scrolls on virtual time`);
+  await step(page, 1019);
+  check(JSON.stringify(await pixels(page)) === JSON.stringify(initial), `${label} prompt holds before the first pixel step`);
+  await step(page, 1);
+  check(JSON.stringify(await pixels(page)) !== JSON.stringify(initial), `${label} prompt starts scrolling at 1020ms`);
   await screenshot(page, `${label}-scroll.png`);
+}
+
+async function stockButtonFeedback(page, label, touch) {
+  const scene = page.locator('#scene');
+  await scene.selectOption('main');
+  const exit = await pixels(page);
+  await press(page, 'circle', touch);
+  const scaleRow = await pixels(page);
+  await scene.selectOption('scale');
+  const scale = await pixels(page);
+  await scene.selectOption('main');
+  await page.locator('#circle').focus();
+  for (const [key, before, after, strip] of [['c', exit, scaleRow, leftStrip], ['s', scaleRow, scale, rightStrip]]) {
+    await page.keyboard.down(key);
+    assert.deepEqual(await pixels(page), before.map((value, index) => strip(index) ? invert(value) : value), `${label} renders the stock XOR strip for ${key}`);
+    await page.keyboard.up(key);
+    assert.deepEqual(await pixels(page), after, `${label} removes the stock XOR strip when ${key} is released`);
+    checks += 2;
+  }
 }
 
 async function buttonFeedback(page, label, touch) {
   await press(page, 'reset-defaults', touch);
   await step(page, 1000);
-  check(await page.locator('#button-feedback').inputValue() === 'icons' && (await current(page)).buttonFeedback === 'icons', `${label} defaults to icon feedback`);
+  check(await page.locator('#button-feedback').inputValue() === 'firmware' && (await current(page)).buttonFeedback === 'firmware', `${label} defaults to firmware feedback`);
+  check(await page.locator('#button-feedback option[value="firmware"]').textContent() === 'Firmware', `${label} names the firmware feedback option`);
   check(await page.locator('#button-feedback option[value="lines"]').textContent() === 'Side lines', `${label} names the full-height side-line option`);
   check(await page.locator('#button-feedback option[value="xor"]').textContent() === 'XOR corner icons', `${label} names the alternate corner-icon option`);
   await page.locator('#scene').selectOption('weighing');
@@ -157,8 +183,8 @@ async function buttonFeedback(page, label, touch) {
       const state = await current(page);
       check(state.held.circle && state.held.square, `${label} holds both physical controls in ${screen}`);
       const expected = unheld.map((value, index) => mode === 'lines' ?
-        index % 128 < 12 || index % 128 >= 115 && index % 128 < 127 ? value === 186 ? 40 : 186 : value :
-        iconMask[index] ? value === 186 ? 40 : 186 : value);
+        leftStrip(index) || rightStrip(index) ? invert(value) : value :
+        iconMask[index] ? invert(value) : value);
       assert.deepEqual(await pixels(page), expected, `${label} renders exact ${mode} pixels in ${screen}`);
       checks++;
       await screenshot(page, `${label}-${screen}-${mode}.png`);
@@ -173,10 +199,10 @@ async function buttonFeedback(page, label, touch) {
       await page.locator('#button-feedback').selectOption(mode);
     }
     await reload(page);
-    check((await current(page)).buttonFeedback === 'icons' && await page.locator('#button-feedback').inputValue() === 'icons', `${label} reload resets the transient ${mode} preference`);
+    check((await current(page)).buttonFeedback === 'firmware' && await page.locator('#button-feedback').inputValue() === 'firmware', `${label} reload resets the transient ${mode} preference`);
     await page.locator('#button-feedback').selectOption(mode);
     await press(page, 'reset-defaults', touch);
-    check((await current(page)).buttonFeedback === 'icons' && await page.locator('#button-feedback').inputValue() === 'icons', `${label} Reset Defaults restores icons from ${mode}`);
+    check((await current(page)).buttonFeedback === 'firmware' && await page.locator('#button-feedback').inputValue() === 'firmware', `${label} Reset Defaults restores firmware feedback from ${mode}`);
   }
 }
 
@@ -236,7 +262,7 @@ async function isolation(currentPage, demoPage) {
 }
 
 try {
-  await promisify(execFile)(process.execPath, [path.join(root, 'tools/build-pages.mjs'), '--current', root, '--demo', root, '--output', site], { timeout: 30000, windowsHide: true });
+  await promisify(execFile)(process.execPath, [path.join(root, 'tools/build-pages.mjs'), '--current', currentCheckout, '--demo', root, '--output', site], { timeout: 30000, windowsHide: true });
   const files = await inventory(site);
   check(files.every(file => !/(^|\/)(server|api|node_modules|packaging|tests|runtime|\.git|\.codegraph|\.pio[^/]*)(\/|$)/i.test(file) && !/(^|\/)(server\.mjs|connection\.json|package(?:-lock)?\.json)$/.test(file)), 'Pages artifact excludes servers, dependencies, tests and private/build files');
   for (const variant of ['', 'demo/']) {
@@ -268,10 +294,18 @@ try {
       return { page, url, variant: directory ? 'demo' : 'current' };
     }));
     for (const { page, url, variant } of pages) {
+      const label = `${variant}-${name}`;
       await navigation(page, url, variant);
       await screens(page, variant, name, touch);
-      await buttonFeedback(page, `${variant}-${name}`, touch);
-      if (variant === 'demo') await intRefData(page, `${variant}-${name}`, touch);
+      await stockButtonFeedback(page, label, touch);
+      if (variant === 'demo') {
+        await buttonFeedback(page, label, touch);
+        await intRefData(page, label, touch);
+      } else if (currentCheckout !== root) {
+        check(await page.locator('#button-feedback').count() === 0, `${label} has no demo feedback selector`);
+        await page.locator('#scene').selectOption('info');
+        check(!(await current(page)).menu.rows.includes('INT REF DATA'), `${label} has no demo reference page`);
+      }
     }
     if (!touch) await isolation(pages[0].page, pages[1].page);
     await context.close();

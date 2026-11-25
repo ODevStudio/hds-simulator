@@ -9,22 +9,11 @@ WebSocket API lets automation operate the same controls and read the state.
 - [Current simulator](https://odevstudio.github.io/hds-simulator/) follows `main`.
 - [Menu demo](https://odevstudio.github.io/hds-simulator/demo/) follows `odev/menu-demo`.
 
-Both run directly in the browser without installing anything. The demo keeps
-four menu rows, with the page counter, held Circle icon and held Square icon
-spaced down the right side. `Weight Wake` shortens the longest label to make
-room for that spacing. The font, other labels and navigation are unchanged.
-In the demo's Session controls, `Button feedback` selects `Icons`,
-`Side lines`, or `XOR corner icons`. Side lines replace held-button icons with
-full-height, 12-pixel-wide strips on the left for Circle and right for Square.
-They invert the pixels underneath, including overlapping text, and disappear
-on release. Their positions match the supplied GIF, including the right strip's
-one-pixel outer margin. The bottom tare indicator is unchanged.
-Selection survives simulated restarts; reloading or Reset
-Defaults returns to Icons. The XOR choice demonstrates the proposed menu
-helper: transparent bitmaps invert the pixels beneath them at the weighing screen's rotation-aware corner
-positions, after menu content is drawn. Weighing keeps its original icons.
-Menu-layout experiments on `odev/menu-demo` do not change the current page.
-Each page saves its own settings.
+Both run directly in the browser and default to the 3.1.17 menu press indicators
+and App Text scrolling. The demo adds `Info` > `INT REF DATA` and a Session
+selector for experimental feedback (`Icons`, `Side lines`, `XOR corner icons`).
+Reloading or resetting defaults restores `Firmware` feedback. Each page saves
+its own settings.
 The local WebSocket API is available only in the standalone packages or local server,
 not on GitHub Pages. There is no Bluetooth connection in either version.
 
@@ -96,16 +85,12 @@ Open `http://localhost:18916/`. Prebuilt renderer files are committed under
 
 ## Renderer Rebuild
 
-The initial renderer derives from standard V8.1 HDS firmware
-[`6f2ac69`](https://github.com/decentespresso/openscale/commit/6f2ac693f7acfc7f476157d36320d7aa67c467fd),
-version 3.1.16. Simulator changes were prepared on 2026-11-11. Its metadata
-records the reference source hashes and the explicit USB charging-icon
-correction; firmware reference files were not changed for that correction.
-
-This demo branch deliberately changes the reference menu layout in
-`include/menu.h` for the right-side button indicators and four-row paging.
-It is a simulator preview, not a hardware-firmware release. Weighing and
-information pages retain the current renderer layout.
+The renderer builds on standard V8.1 HDS firmware 3.1.16 and incorporates menu
+feedback and App Text scrolling from
+[`v3.1.17`](https://github.com/decentespresso/openscale/releases/tag/v3.1.17).
+The simulator already includes the charging-icon fix from that release. Renderer
+metadata records the reference source hashes and simulator-only changes. This
+repository is not a hardware-firmware release and does not simulate the ADC.
 
 Only changing the native OLED renderer requires Python and an activated
 Emscripten 3.1.74 SDK. U8g2 2.36.18 and ArduinoJson 7.4.3 source is vendored:

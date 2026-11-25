@@ -1,41 +1,23 @@
 # HDS Browser Simulator
 
-A local, browser-only simulator of standard V8.1 HDS firmware at `6f2ac69`
-(3.1.16). It runs the firmware's U8g2 drawing functions, fonts and icons in
-WebAssembly, with a separate deterministic model for buttons, settings and time.
-It is not an ESP32 or electrical-hardware emulator.
+A browser simulator for the standard V8.1 HDS. It runs the firmware's U8g2
+drawing functions, fonts and icons in WebAssembly, with a separate deterministic
+model for buttons, settings and time. It is not an electrical-hardware emulator.
 
-On `odev/menu-demo`, standard menu lists have four rows per page and a right
-column containing the page counter, Circle and Square indicators. The icons
-use the weighing screen's original bitmaps, appearing only while their buttons
-are held. Circle starts at pixel 24 and Square at pixel 48, leaving equal gaps
-between the visible page counter and icons. The shorter `Weight Wake` label
-fits beside the lower icon. Other labels, font, row spacing, navigation,
-information pages and action feedback are unchanged.
+The default `Firmware` mode follows 3.1.17: while held, Circle and Square invert
+12-pixel strips at the left and right edges of menu rows and action feedback.
+Weighing keeps its original corner icons, and information pages have no strips.
 
-The Session control `Button feedback` switches between the existing Icons and
-Side lines. Lines are 12 by 64 pixels at logical columns 0-11 for Circle and
-115-126 for Square, matching the supplied GIF. The rightmost column remains
-untouched. XOR drawing inverts overlapping text instead of covering it.
-They replace existing pressed-button bitmaps in menus and weighing, appearing
-only while held and disappearing on release. App Text and priority-screen
-suppression stay unchanged, and the bottom tare indicator is not modified.
-This is a transient demo preference, not a firmware setting:
-simulated restart preserves it, while reload and Reset Defaults select Icons.
-
-The third choice, XOR corner icons, uses `drawMenuButtonIndicators()` from
-`include/menu.h` after menu content inside the existing U8g2 page loop. It wraps
-the firmware's rotation-aware `drawButton()` with draw color 2 and transparent
-bitmap mode 1, then restores color 1 and bitmap mode 0. Bitmap set bits invert
-the underlying content; zero bits leave it untouched. This proposal applies
-to menu rows and menu action feedback. Weighing, tare, information pages and
-the two existing feedback choices remain unchanged.
+The demo's `Button feedback` selector also offers `Icons` (right-side menu
+sidebar), `Side lines` (menu rows and weighing), and `XOR corner icons`
+(transparent bitmaps on menu rows and action feedback). Restart preserves the
+choice; reload and Reset Defaults restore `Firmware`.
 
 One simulator-only correction replaces the charging bolt with the actual
 battery-level icon when USB is present but charging is inactive. It uses the
 firmware's battery buckets, blink timing and bitmap assets wherever a charging
 icon is drawn. Existing sample icons and menus without charging icons remain
-unchanged. Firmware source stays pinned; renderer metadata records the correction.
+unchanged. The renderer metadata records the correction.
 
 ## Run Without Build Tools
 
@@ -114,8 +96,10 @@ the ADC pulse detector. They are separate from tapping Circle and Square.
 
 App Text defaults Off, as in firmware. Enable it through Display and connect the
 simulated app before showing a prompt. Show writes accept 1-128 printable ASCII
-characters. Identical writes preserve scroll phase; Circle hold cancels prompts
-for that connection. Disconnect/reconnect starts a new session.
+characters. Long prompts scroll at 52 pixels per second, holding for one second
+at each end; short prompts stay centered. Identical writes preserve the scroll
+phase. Circle hold cancels prompts for that connection. Disconnect/reconnect
+starts a new session.
 
 Only simulated settings persist in `hds-simulator.settings.v1`, suffixed with the
 page directory when hosted below `/`. Current and demo pages have independent

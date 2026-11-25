@@ -14,7 +14,7 @@ unsigned long simNow = 0;
 String simVersion, simDate, simRevision, simDeviceName, simSsid, simIp, simWifiMode;
 bool simBleConnected = false, simCircle = false, simSquare = false, simUsb = false;
 bool simCharging = false, simWifiConnected = false, simWifiCredentials = false;
-bool simButtonLines = false, simMenuXor = false, simMenuFrame = false;
+bool simButtonLines = false, simMenuXor = false, simMenuIcons = false, simMenuFrame = false;
 int simBatteryPercent = 75;
 unsigned long simTimerSeconds = 0;
 bool b_negativeWeight = false, b_timeOnTop = false, b_screenFlipped = false;
@@ -79,19 +79,15 @@ struct {
 #define FIRMWARE_VER simVersion.c_str()
 #define LINE3 simDate.c_str()
 #define GIT_REV simRevision.c_str()
+#define HDS_SIM_DRAW_MENU_INDICATORS drawSelectedMenuButtonIndicators
+void drawSelectedMenuButtonIndicators();
 #include "production.inc"
 
 void NativeDisplay::drawXBM(int x, int y, int width, int height, const uint8_t *bitmap) {
   const bool buttonBitmap = bitmap == image_circle || bitmap == image_square;
-  if (simMenuFrame && buttonBitmap && !simMenuXor) {
-    if (t_actionMessageDelay > 0) return;
-    if (!simButtonLines) {
-      const uint8_t drawColor = u8g2_GetDrawColor(&display);
-      setDrawColor(1);
-      u8g2_DrawXBM(&display, LCDWidth - width, bitmap == image_circle ? 24 : 48, width, height, bitmap);
-      setDrawColor(drawColor);
-      return;
-    }
+  if (simMenuFrame && simMenuIcons && buttonBitmap) {
+    u8g2_DrawXBM(&display, LCDWidth - width, bitmap == image_circle ? 24 : 48, width, height, bitmap);
+    return;
   }
   if (simButtonLines && buttonBitmap) {
     const uint8_t drawColor = u8g2_GetDrawColor(&display);
@@ -110,6 +106,19 @@ void NativeDisplay::drawXBM(int x, int y, int width, int height, const uint8_t *
     ++y;
   }
   u8g2_DrawXBM(&display, x, y, width, height, bitmap);
+}
+
+void drawSelectedMenuButtonIndicators() {
+  if (simMenuXor || simMenuIcons) {
+    if (simMenuIcons && t_actionMessageDelay > 0) return;
+    u8g2.setBitmapMode(1);
+    u8g2.setDrawColor(simMenuXor ? 2 : 1);
+    drawButton();
+    u8g2.setDrawColor(1);
+    u8g2.setBitmapMode(0);
+  } else if (t_actionMessageDelay == 0 || (!simButtonLines && actionMessage != "Exit Menu")) {
+    drawMenuButtonIndicators();
+  }
 }
 
 String readText(JsonVariantConst value, const char *fallback = "") {
@@ -157,15 +166,13 @@ void configureSnapshot() {
   simBatteryPercent = std::clamp(icons["batteryPercent"] | 75, 0, 100);
   simCircle = root["held"]["circle"] | false;
   simSquare = root["held"]["square"] | false;
-  simButtonLines = root["buttonFeedback"].is<const char *>() &&
-    root["buttonFeedback"].as<JsonString>().size() == 5 &&
-    std::strcmp(root["buttonFeedback"].as<const char *>(), "lines") == 0;
-  simMenuXor = root["buttonFeedback"].is<const char *>() &&
-    root["buttonFeedback"].as<JsonString>().size() == 3 &&
-    std::strcmp(root["buttonFeedback"].as<const char *>(), "xor") == 0;
-  simVersion = readText(info["firmwareVersion"], "FW: 3.1.16");
-  simDate = readText(info["buildDate"], "Nov 09 2026");
-  simRevision = readText(info["revision"], HDS_SIM_COMMIT_SHORT);
+  const auto buttonFeedback = root["buttonFeedback"].as<JsonString>();
+  simButtonLines = buttonFeedback == JsonString("lines");
+  simMenuXor = buttonFeedback == JsonString("xor");
+  simMenuIcons = buttonFeedback == JsonString("icons");
+  simVersion = readText(info["firmwareVersion"], "FW: 3.1.17");
+  simDate = readText(info["buildDate"], "Nov 20 2026");
+  simRevision = readText(info["revision"], "1efca39");
   simDeviceName = readText(info["deviceName"], "hds-simulator");
   simSsid = readText(info["ssid"], "N/A");
   simIp = readText(info["ip"], "0.0.0.0");
@@ -211,7 +218,7 @@ void drawWeighing() {
       drawWeightAt(f_displayedValue, LCDHeight - 30);
       u8g2.setFont(u8g2_font_6x10_tr);
       const AppPromptScrollState scroll = {true, 1, readMillis(prompt["startedAt"])};
-      const int x = appPromptTextX(scroll, u8g2.getUTF8Width(text.c_str()), LCDWidth, simNow);
+      const int x = appPromptTextX(scroll, u8g2.getStrWidth(text.c_str()), LCDWidth, simNow);
       u8g2.drawStr(x, LCDHeight - 16, text.c_str());
     } else {
       drawWeightAt(f_displayedValue, -1);

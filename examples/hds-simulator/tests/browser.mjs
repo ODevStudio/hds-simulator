@@ -100,9 +100,9 @@ try {
   state = await current(page);
   check(state.prompt.visible && state.prompt.text.includes('Carpano'), 'Manual App Text follows opt-in and connection');
   const initial = await pixels(page);
-  await step(page, 999);
+  await step(page, 1019);
   check(JSON.stringify(initial) === JSON.stringify(await pixels(page)), 'Initial scroll hold is stationary');
-  await step(page, 101);
+  await step(page, 1);
   check(JSON.stringify(initial) !== JSON.stringify(await pixels(page)), 'Prompt moves after hold');
   await page.screenshot({ path: path.join(output, 'desktop-app-text.png') });
   await page.locator('#view-full').click();

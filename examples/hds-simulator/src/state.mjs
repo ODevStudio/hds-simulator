@@ -13,12 +13,12 @@ const boundedWeight = (value) => Math.max(-10000, Math.min(10000, value));
 export function createState(settings = defaults) {
   const saved = validateSettings(settings);
   return {
-    now: 0, screen: "boot", transition: { at: 1000, kind: "boot" }, setupBoot: false, buttonFeedback: "icons",
+    now: 0, screen: "boot", transition: { at: 1000, kind: "boot" }, setupBoot: false, buttonFeedback: "firmware",
     settings: saved, menu: { id: "main", selected: 0 }, buttons: initialButtons(), chordAt: null,
     grossWeight: 0, tareOffset: 0, pourRate: 3, pouring: false, timerMs: 0, timerRunning: false,
     icons: { bleEnabled: true, bleConnected: false, wifiEnabled: saved.wifiOnBoot, wifiConnected: false,
       batteryPercent: 90, usbPresent: true, charging: true, heartbeat: false },
-    info: { firmwareVersion: "FW: 3.1.16", buildDate: "Nov 09 2026", revision: "6f2ac69",
+    info: { firmwareVersion: "FW: 3.1.17", buildDate: "Nov 20 2026", revision: "1efca39",
       deviceName: "hds-simulator", ssid: "N/A", ip: "0.0.0.0", wifiMode: saved.wifiOnBoot ? "AP" : "Idle",
       wifiCredentialsSaved: false, batteryVoltage: 4.03, batteryHealth: 94, batteryPage: 0, calibrated: false },
     feedback: null, status: "", restartPending: false, logoNextSample: false,
@@ -170,7 +170,7 @@ function setWifi(state, event) {
 
 function control(state, event) {
   switch (event.type) {
-    case "setButtonFeedback": return ["icons", "lines", "xor"].includes(event.value) ? { ...state, buttonFeedback: event.value } : state;
+    case "setButtonFeedback": return ["firmware", "icons", "lines", "xor"].includes(event.value) ? { ...state, buttonFeedback: event.value } : state;
     case "setWeight": return validNumber(event.value) && Math.abs(event.value) <= 10000 ?
       { ...state, grossWeight: event.value, lastActivityAt: state.now } : state;
     case "setPourRate": return validNumber(event.value) && event.value >= 0 && event.value <= 1000 ? { ...state, pourRate: event.value } : state;
@@ -193,7 +193,7 @@ function control(state, event) {
     case "setPrompt": return setPrompt(state, event.text);
     case "clearPrompt": return { ...state, prompt: emptyPrompt(state.prompt.session, state.prompt.cancelled, state.prompt.generation + 1), status: "" };
     case "restart": return restart(state, event.setup === true);
-    case "resetDefaults": return { ...restart(state, false, defaults), buttonFeedback: "icons" };
+    case "resetDefaults": return { ...restart(state, false, defaults), buttonFeedback: "firmware" };
     case "jump": {
       const next = { ...state, buttons: initialButtons(), chordAt: null, transition: null, lastActivityAt: state.now };
       return event.screen === "boot" ? restart(state) : isMenu(event.screen) ? openMenu(next, event.screen) :

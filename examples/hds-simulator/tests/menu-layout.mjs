@@ -10,7 +10,7 @@ import { menuDefinitions, menuIds, menuRowsPerPage } from '../src/menus.mjs';
 const native = process.argv[2] || process.env.HDS_NATIVE_RENDERER;
 const baselinePath = process.argv[3] || process.env.HDS_BASELINE_RENDERER;
 assert(native, 'Pass the built native renderer as argv2 or HDS_NATIVE_RENDERER');
-assert(baselinePath, 'Pass the stable src/renderer.mjs as argv3 or HDS_BASELINE_RENDERER');
+assert(baselinePath, 'Pass the Current 3.1.17 src/renderer.mjs as argv3 or HDS_BASELINE_RENDERER');
 const baselineUrl = pathToFileURL(path.resolve(baselinePath));
 const { createRenderer: createBaseline } = await import(baselineUrl.href);
 const baseline = await createBaseline({ wasmBinary: await readFile(new URL('../dist/renderer.wasm', baselineUrl)) });
@@ -19,7 +19,7 @@ assert.equal(menuRowsPerPage, 4);
 assert(renderer.metadata.simulatorCorrections.includes('demo-menu-four-row-button-sidebar'));
 assert(renderer.metadata.simulatorCorrections.includes('demo-button-feedback-side-lines'));
 assert(renderer.metadata.simulatorCorrections.includes('demo-menu-xor-corner-icons'));
-assert(!baseline.metadata.simulatorCorrections.some(value => value.startsWith('demo-menu-')), 'Reference must be the unchanged stable renderer');
+assert(!baseline.metadata.simulatorCorrections.some(value => value.startsWith('demo-menu-')), 'Reference must be the Current firmware renderer');
 assert.equal(baseline.metadata.u8g2Version, renderer.metadata.u8g2Version);
 
 const base = {
@@ -27,7 +27,7 @@ const base = {
   settings: { ...defaults, screenFlipped: true },
   icons: { bleEnabled: true, bleConnected: true, wifiEnabled: false, batteryPercent: 75 },
   held: { circle: false, square: false },
-  info: { firmwareVersion: 'FW: 3.1.16', buildDate: 'Nov 09 2026', revision: '6f2ac69',
+  info: { firmwareVersion: 'FW: 3.1.17', buildDate: 'Nov 20 2026', revision: '1efca39',
     deviceName: 'hds-simulator', ssid: 'N/A', ip: '0.0.0.0', batteryVoltage: 3.8 },
   menu: { rows: ['Exit', 'Scale', 'Connections', 'Display', 'Power', 'Info'], selected: 0 },
 };
@@ -72,11 +72,15 @@ const unchangedCases = [
   { screen: 'weighing', prompt: { visible: true, startedAt: 0, text: 'Carpano Antica Sweet Vermouth: 31g' } },
   { screen: 'main', feedback: { text: 'Timer Top', text2: 'ON', until: 3000 } },
   { screen: 'main', feedback: { text: 'A very long feedback label', text2: '', until: 3000 } },
+  { screen: 'main', feedback: { text: 'Exit Menu', text2: '', until: 3000 } },
 ].flatMap(frame => [true, false].flatMap(screenFlipped => heldCases.map(held => ({
   label: `unchanged ${frame.screen} ${JSON.stringify(frame)} rotation${screenFlipped} held${JSON.stringify(held)}`,
   snapshot: { ...base, ...frame, settings: { ...base.settings, ...frame.settings, screenFlipped }, held },
 }))));
-const iconCases = [...menuCases, ...syntheticCases, ...unchangedCases];
+const firmwareCases = [...menuCases, ...syntheticCases, ...unchangedCases];
+const iconCases = firmwareCases.map(fixture => ({
+  ...fixture, label: `icons ${fixture.label}`, snapshot: { ...fixture.snapshot, buttonFeedback: 'icons' },
+}));
 const cornerLineCases = [...menuCases, ...syntheticCases, ...unchangedCases.filter(fixture =>
   fixture.snapshot.screen === 'weighing' && !fixture.snapshot.prompt && !fixture.snapshot.shutdownUntil)].map(fixture => ({
   ...fixture, label: `lines ${fixture.label}`, snapshot: { ...fixture.snapshot, buttonFeedback: 'lines' },
@@ -94,7 +98,7 @@ const xorUnchangedCases = unchangedCases.filter(fixture => !fixture.snapshot.fee
   ...fixture, label: `unchanged xor ${fixture.label}`, snapshot: { ...fixture.snapshot, buttonFeedback: 'xor' },
 }));
 const invalidCases = [...menuCases.slice(0, 8), ...unchangedCases.slice(0, 8)].flatMap(fixture =>
-  [undefined, null, {}, 1, true, 'unknown', 'LINES', 'XOR', 'lines\u0000junk', 'lines\u0000', 'xor\u0000junk', 'xor\u0000'].flatMap(buttonFeedback =>
+  [undefined, null, {}, 1, true, 'unknown', 'LINES', 'XOR', 'icons\u0000junk', 'lines\u0000junk', 'lines\u0000', 'xor\u0000junk', 'xor\u0000'].flatMap(buttonFeedback =>
     ['lines', 'xor'].flatMap(primeMode => [
       { ...fixture, label: `prime ${primeMode} ${fixture.label}`, snapshot: { ...fixture.snapshot, buttonFeedback: primeMode } },
       { ...fixture, primeMode, label: `feedback ${JSON.stringify(buttonFeedback)} after ${primeMode} ${fixture.label}`, snapshot: { ...fixture.snapshot, buttonFeedback } },
@@ -107,7 +111,7 @@ const restorationCases = menuCases.slice(0, 8).flatMap(fixture => [
   { label: `prime menu XOR before ${target.kind} ${fixture.label}`, snapshot: { ...fixture.snapshot, buttonFeedback: 'xor' } },
   { ...target, label: `restore ${target.kind} after menu XOR ${fixture.label}`, primeSnapshot: { ...fixture.snapshot, buttonFeedback: 'xor' } },
 ]));
-const cases = [...iconCases, ...cornerLineCases.flatMap((fixture, index) => [fixture, lineReleaseCases[index]]), ...suppressedLineCases, ...xorMenuCases, ...xorUnchangedCases, ...invalidCases, ...restorationCases];
+const cases = [...firmwareCases, ...iconCases, ...cornerLineCases.flatMap((fixture, index) => [fixture, lineReleaseCases[index]]), ...suppressedLineCases, ...xorMenuCases, ...xorUnchangedCases, ...invalidCases, ...restorationCases];
 const nativeResult = spawnSync(native, [], {
   input: cases.map(fixture => JSON.stringify(fixture.snapshot)).join('\n') + '\n',
   maxBuffer: 64 * 1024 * 1024,
@@ -153,7 +157,7 @@ const glyphs = [
 for (const glyph of glyphs) assert(glyph.pixels.some(Boolean), `Stable weighing provides the ${glyph.name} bitmap`);
 let checkedMenus = 0;
 for (const fixture of [...menuCases, ...syntheticCases]) {
-  const frame = renderer.render(fixture.snapshot);
+  const frame = renderer.render({ ...fixture.snapshot, buttonFeedback: 'icons' });
   const upright = fixture.snapshot.settings.screenFlipped ? frame : frame.toReversed();
   const stableFrame = baseline.render({ ...fixture.snapshot, held: heldCases[0] });
   const stable = fixture.snapshot.settings.screenFlipped ? stableFrame : stableFrame.toReversed();
@@ -181,11 +185,12 @@ for (const fixture of [...menuCases, ...syntheticCases]) {
   }
   checkedMenus++;
 }
-for (const fixture of unchangedCases) {
-  assert.deepEqual(renderer.render(fixture.snapshot), baseline.render(fixture.snapshot), `Non-menu frame changed from stable: ${fixture.label}`);
+for (const fixture of firmwareCases) {
+  assert.deepEqual(renderer.render(fixture.snapshot), baseline.render(fixture.snapshot), `Firmware mode must match Current 3.1.17: ${fixture.label}`);
 }
-for (const fixture of iconCases) {
-  assert.deepEqual(renderer.render({ ...fixture.snapshot, buttonFeedback: 'icons' }), renderer.render(fixture.snapshot), `Explicit icons must match the unchanged default: ${fixture.label}`);
+const withoutFeedbackHighlights = frame => frame.feedback ? { ...frame, held: heldCases[0] } : frame;
+for (const { snapshot: frame, label } of unchangedCases) {
+  assert.deepEqual(renderer.render({ ...frame, buttonFeedback: 'icons' }), baseline.render(withoutFeedbackHighlights(frame)), `Icon mode leaves weighing, info and feedback unchanged: ${label}`);
 }
 let lineTextInverted = 0;
 for (const fixture of cornerLineCases) {
@@ -205,7 +210,7 @@ for (const fixture of cornerLineCases) {
 }
 assert(lineTextInverted > 0, 'Side-line fixtures invert overlapping lit menu text to black');
 for (const fixture of suppressedLineCases) {
-  assert.deepEqual(renderer.render(fixture.snapshot), baseline.render(fixture.snapshot), `App Text and information/feedback priority suppress line feedback: ${fixture.label}`);
+  assert.deepEqual(renderer.render(fixture.snapshot), baseline.render(withoutFeedbackHighlights(fixture.snapshot)), `App Text and information/feedback priority suppress line feedback: ${fixture.label}`);
 }
 let selectionTextKept = 0;
 let pageTextKept = 0;
@@ -264,6 +269,6 @@ for (const fixture of restorationCases.filter(fixture => fixture.primeSnapshot))
 assert(opaqueWeighingFrames > 0, 'Restoration fixtures require bitmap mode zero to clear lit weighing text under bitmap zeroes');
 for (const fixture of invalidCases.filter(fixture => fixture.primeMode)) {
   renderer.render({ ...fixture.snapshot, buttonFeedback: fixture.primeMode });
-  assert.deepEqual(renderer.render(fixture.snapshot), renderer.render({ ...fixture.snapshot, buttonFeedback: 'icons' }), `Invalid native feedback modes restore icons after ${fixture.primeMode}: ${fixture.label}`);
+  assert.deepEqual(renderer.render(fixture.snapshot), renderer.render({ ...fixture.snapshot, buttonFeedback: 'firmware' }), `Invalid native feedback modes restore firmware after ${fixture.primeMode}: ${fixture.label}`);
 }
-console.log(`Menu layout passed: ${checkedMenus} menu frames with stable-font/icon references; ${unchangedCases.length} unchanged weighing/info/feedback frames; ${cornerLineCases.length + lineReleaseCases.length + suppressedLineCases.length} line-mode/release frames; ${xorMenuCases.length + xorUnchangedCases.length} XOR frames; ${cases.length} native/WASM comparisons`);
+console.log(`Menu layout passed: ${firmwareCases.length} Current 3.1.17 matches; ${checkedMenus} sidebar-icon menu frames; ${cornerLineCases.length + lineReleaseCases.length + suppressedLineCases.length} line-mode/release frames; ${xorMenuCases.length + xorUnchangedCases.length} XOR frames; ${cases.length} native/WASM comparisons`);

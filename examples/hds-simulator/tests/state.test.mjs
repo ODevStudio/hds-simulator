@@ -107,8 +107,8 @@ test("short Weight Wake labels preserve all saved setting values", () => {
 
 test("button feedback is a validated demo preference, not a firmware setting", () => {
   const initial = ready();
-  assert.equal(snapshot(initial).buttonFeedback, "icons");
-  for (const mode of ["lines", "xor"]) {
+  assert.equal(snapshot(initial).buttonFeedback, "firmware");
+  for (const mode of ["icons", "lines", "xor"]) {
     const selected = event(initial, "setButtonFeedback", { value: mode });
     assert.equal(snapshot(selected).buttonFeedback, mode);
     assert.deepEqual(selected.settings, initial.settings);
@@ -116,14 +116,14 @@ test("button feedback is a validated demo preference, not a firmware setting", (
       assert.deepEqual(snapshot(event(selected, "setButtonFeedback", { value })), snapshot(selected));
     }
     const held = event(selected, "buttonDown", { name: "circle" });
-    const switched = snapshot(event(held, "setButtonFeedback", { value: "icons" }));
-    assert.equal(switched.buttonFeedback, "icons");
+    const switched = snapshot(event(held, "setButtonFeedback", { value: "firmware" }));
+    assert.equal(switched.buttonFeedback, "firmware");
     assert.equal(switched.held.circle, true);
     assert.equal(snapshot(event(selected, "restart")).buttonFeedback, mode);
     assert.equal(snapshot(event(selected, "restart", { setup: true })).buttonFeedback, mode);
     assert.equal(snapshot(jump(selected, "main")).buttonFeedback, mode);
-    assert.equal(snapshot(event(selected, "resetDefaults")).buttonFeedback, "icons");
-    assert.equal(snapshot(createState(selected.settings)).buttonFeedback, "icons");
+    assert.equal(snapshot(event(selected, "resetDefaults")).buttonFeedback, "firmware");
+    assert.equal(snapshot(createState(selected.settings)).buttonFeedback, "firmware");
   }
 });
 
